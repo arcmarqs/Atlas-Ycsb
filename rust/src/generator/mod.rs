@@ -6,7 +6,7 @@ use rand_xoshiro::{self, SplitMix64};
 use rand_core::SeedableRng;
 use rand_distr::{Alphanumeric, Distribution, Standard, WeightedIndex, Zipf, Uniform};
 use sharded_slab::Pool;
-const PRIMARY_KEY_LEN: usize = 12;
+const PRIMARY_KEY_LEN: usize = 8;
 const SECONDARY_KEY_LEN: usize = 6;
 const VALUE_LEN: usize = 6;
 const HASHMAP_LEN: usize = 1;

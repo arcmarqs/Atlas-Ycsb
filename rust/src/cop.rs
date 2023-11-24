@@ -78,7 +78,7 @@ fn generate_log(id: u32) {
     let console_appender = ConsoleAppender::builder()
         .encoder(Box::new(PatternEncoder::new("{l} {d} - {m}{n}"))).build();
 
-    let config = Config::builder()
+        let config = Config::builder()
         .appender(Appender::builder().build("comm", file_appender(id, "_comm")))
         .appender(Appender::builder().build("reconfig", file_appender(id, "_reconfig")))
         .appender(Appender::builder().build("common", file_appender(id, "_common")))
@@ -86,15 +86,20 @@ fn generate_log(id: u32) {
         .appender(Appender::builder().build("file", file_appender(id, "")))
         .appender(Appender::builder().build("log_transfer", file_appender(id, "_log_transfer")))
         .appender(Appender::builder().build("state_transfer", file_appender(id, "_state_transfer")))
-        .appender(Appender::builder().filter(Box::new(ThresholdFilter::new(LevelFilter::Debug))).build("console", Box::new(console_appender)))
+        .appender(Appender::builder().build("decision_log", file_appender(id, "_decision_log")))
+        .appender(Appender::builder().build("replica", file_appender(id, "_replica")))
+        .appender(Appender::builder().filter(Box::new(ThresholdFilter::new(LevelFilter::Warn))).build("console", Box::new(console_appender)))
 
         .logger(Logger::builder().appender("comm").build("atlas_communication", LevelFilter::Debug))
         .logger(Logger::builder().appender("common").build("atlas_common", LevelFilter::Debug))
         .logger(Logger::builder().appender("reconfig").build("atlas_reconfiguration", LevelFilter::Debug))
-        .logger(Logger::builder().appender("consensus").build("febft_pbft_consensus", LevelFilter::Debug))
         .logger(Logger::builder().appender("log_transfer").build("atlas_log_transfer", LevelFilter::Debug))
+        .logger(Logger::builder().appender("decision_log").build("atlas_decision_log", LevelFilter::Debug))
+        .logger(Logger::builder().appender("replica").build("atlas_smr_replica", LevelFilter::Debug))
+        .logger(Logger::builder().appender("consensus").build("febft_pbft_consensus", LevelFilter::Debug))
         .logger(Logger::builder().appender("state_transfer").build("febft_state_transfer", LevelFilter::Debug))
         .build(Root::builder().appender("file").build(LevelFilter::Debug), ).wrapped(ErrorKind::MsgLog).unwrap();
+
 
     let _handle = log4rs::init_config(config).wrapped(ErrorKind::MsgLog).unwrap();
 }
