@@ -36,6 +36,7 @@ use atlas_reconfiguration::ReconfigurableNodeProtocol;
 use atlas_smr_execution::SingleThreadedDivExecutor;
 use atlas_smr_replica::config::{DivisibleStateReplicaConfig, ReplicaConfig};
 use atlas_smr_replica::server::divisible_state_server::DivStReplica;
+use atlas_view_transfer::config::ViewTransferConfig;
 use atlas_view_transfer::message::serialize::ViewTransfer;
 use atlas_view_transfer::SimpleViewTransferProtocol;
 use febft_pbft_consensus::bft::config::{PBFTConfig, ProposerConfig};
@@ -445,9 +446,6 @@ pub async fn setup_replica(
     let watermark = get_watermark();
 
     let op_config = PBFTConfig::new(
-        node_id,
-        None,
-        view,
         timeout_duration.clone(),
         watermark,
         proposer_config,
@@ -459,6 +457,10 @@ pub async fn setup_replica(
 
     let dl_config = DecLogConfig {
         default_ongoing_capacity: watermark as usize,
+    };
+
+    let vt_config = ViewTransferConfig {
+        timeout_duration,
     };
 
     let service = KVApp;
@@ -488,7 +490,7 @@ pub async fn setup_replica(
         p: Default::default(),
         reconfig_node: reconf_config,
         dl_config,
-        vt_config: (),
+        vt_config: vt_config,
     };
 
     let div_conf = DivisibleStateReplicaConfig {

@@ -3,6 +3,7 @@ use std::sync::atomic::AtomicBool;
 use std::sync::{Arc, Barrier};
 use std::sync::atomic::Ordering::Relaxed;
 
+use anyhow::Context;
 use atlas_client::concurrent_client::ConcurrentClient;
 use atlas_common::collections::HashMap;
 use atlas_common::peer_addr::PeerAddr;
@@ -74,7 +75,7 @@ fn policy(id: u32, str: &str) -> CompoundPolicy {
     let roller = FixedWindowRoller::builder()
         .base(1)
         .build(format_old_log(id, str).as_str(), 5)
-        .wrapped(ErrorKind::MsgLog)
+        .context("MsgLog Error")
         .unwrap();
 
     CompoundPolicy::new(Box::new(trigger), Box::new(roller))
@@ -85,7 +86,7 @@ fn file_appender(id: u32, str: &str) -> Box<dyn Append> {
         RollingFileAppender::builder()
             .encoder(Box::new(PatternEncoder::new("{l} {d} - {m}{n}")))
             .build(format_log(id, str).as_str(), Box::new(policy(id, str)))
-            .wrapped_msg(ErrorKind::MsgLog, "Failed to create rolling file appender")
+            .context("Failed to create rolling file appender")
             .unwrap(),
     )
 }
@@ -114,10 +115,10 @@ fn generate_log(id: u32) {
         .logger(Logger::builder().appender("replica").build("atlas_smr_replica", LevelFilter::Debug))
         .logger(Logger::builder().appender("consensus").build("febft_pbft_consensus", LevelFilter::Debug))
         .logger(Logger::builder().appender("state_transfer").build("febft_state_transfer", LevelFilter::Debug))
-        .build(Root::builder().appender("file").build(LevelFilter::Debug), ).wrapped(ErrorKind::MsgLog).unwrap();
+        .build(Root::builder().appender("file").build(LevelFilter::Debug), ).context("MsgLog Error").unwrap();
 
 
-        let _handle = log4rs::init_config(config).wrapped(ErrorKind::MsgLog).unwrap();
+        let _handle = log4rs::init_config(config).context("MsgLog Error").unwrap();
 }
 
 pub fn main() {
