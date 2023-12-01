@@ -506,19 +506,19 @@ fn sk_stream() -> impl Iterator<Item = KeyPair> {
 }
 
 fn run_client(client: SMRClient, generator: Arc<Generator>) {
-   // let id = client.id();
+    let id = client.id().0.clone();
     println!("run client");
     let concurrent_client = ConcurrentClient::from_client(client, get_concurrent_rqs()).unwrap();
     let mut rand = SplitMix64::from_entropy();
 
-    for _ in 0..1000000 {
+    for _ in 0..10000000 as u64 {
         let key = generator.get_key_zipf(&mut rand);
-        let ser_key = bincode::serialize(&key).expect("failed to serialize key");
+        let ser_key = key.as_bytes().to_vec();
         let op: Operation = rand.gen();
 
         let request = match &op {
             Operation::Read => {
-                println!("Read {:?}",&key);
+                println!("Read {:?}",&ser_key);
                 Action::Read(ser_key)
             },
             Operation::Insert =>{
@@ -528,7 +528,7 @@ fn run_client(client: SMRClient, generator: Arc<Generator>) {
                 Action::Insert(ser_key,ser_map)
             },
             Operation::Remove =>{ 
-                println!("Remove {:?}",&key);
+                println!("Remove {:?}",&ser_key);
 
                 Action::Remove(ser_key)
 
@@ -536,7 +536,7 @@ fn run_client(client: SMRClient, generator: Arc<Generator>) {
             Operation::Update => {
 
                 let map = generate_kv_pairs();
-                println!("Update {:?} {:?}",&key,&map);
+                println!("Update {:?} {:?}",&ser_key,&map);
 
                 let ser_map = bincode::serialize(&map).expect("failed to serialize map");
                 Action::Insert(ser_key,ser_map)
