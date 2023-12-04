@@ -301,7 +301,7 @@ fn client_async_main() {
 
     let (tx, mut rx) = channel::new_bounded_async(8);
 
-    generate_log(1000);
+    //generate_log(1000);
 
     for i in 0..client_count {
         let id = NodeId::from(i + first_id);
