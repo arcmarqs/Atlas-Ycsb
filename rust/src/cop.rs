@@ -103,11 +103,13 @@ fn generate_log(id: u32) {
         .logger(Logger::builder().appender("replica").build("atlas_smr_replica", LevelFilter::Debug))
         .logger(Logger::builder().appender("consensus").build("febft_pbft_consensus", LevelFilter::Debug))
         .logger(Logger::builder().appender("state_transfer").build("febft_state_transfer", LevelFilter::Debug))
+        .logger(Logger::builder().appender("state_transfer").build("progressive_state_transfer", LevelFilter::Debug))
+        .logger(Logger::builder().appender("state_transfer").build("atlas_divisible_state", LevelFilter::Debug))
+
         .build(Root::builder().appender("file").build(LevelFilter::Debug), ).context("MsgLog Error").unwrap();
 
 
-    let _handle = log4rs::init_config(config).context("MsgLog Error")
-    .unwrap();
+        let _handle = log4rs::init_config(config).context("MsgLog Error").unwrap();
 }
 
 pub fn main() {
@@ -362,8 +364,8 @@ fn client_async_main() {
     }
 
     let mut handles = Vec::with_capacity(client_count as usize);
-    let keypool = generate_key_pool(100000);
-    let generator = Arc::new(Generator::new(keypool, 100000));
+    let keypool = generate_key_pool(1000000);
+    let generator = Arc::new(Generator::new(keypool, 1000000));
 
     for client in clients {
         let id = client.id();
@@ -401,9 +403,10 @@ fn run_client(client: SMRClient, generator: Arc<Generator>) {
     let concurrent_client = ConcurrentClient::from_client(client, get_concurrent_rqs()).unwrap();
     let mut rand = SplitMix64::from_entropy();
 
-    for _ in 0..10000000 as u64 {
+    for _ in 0..100000000 as u64 {
         let key = generator.get_key_zipf(&mut rand);
-        let ser_key = key.as_bytes().to_vec();
+        let mut ser_key = vec![0,0,0,0];
+        ser_key.extend(key.as_bytes().iter());
         let op: Operation = rand.gen();
 
         let request = match &op {
