@@ -278,11 +278,12 @@ fn client_async_main() {
 
     println!("arg_vec: {:?}", arg_vec);
 
-    let mut first_id: u32 = arg_vec.last().unwrap_or(&default).parse().unwrap();
+    let mut first_id: u32 = env::var("ID").unwrap_or(String::from("1000")).parse().unwrap();
+
+    let client_count: u32 = env::var("NUM_CLIENTS").unwrap_or(String::from("1")).parse().unwrap();
+
 
     //let client_count: u32 = env::var("NUM_CLIENTS").unwrap_or(String::from("1")).parse().unwrap();
-
-    let client_count = 1;
 
     let mut secret_keys: IntMap<KeyPair> = sk_stream()
         .take(clients_config.len())
