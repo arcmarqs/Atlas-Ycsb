@@ -301,22 +301,21 @@ fn client_async_main() {
 
     let (tx, mut rx) = channel::new_bounded_async(8);
 
-    let comm_stats = None;
     generate_log(1000);
 
     for i in 0..client_count {
-        let id = NodeId::from(first_id + i);
+        let id = NodeId::from(i + first_id);
 
         let addrs = {
             let mut addrs = IntMap::new();
+
             for replica in &replicas_config {
                 let id = NodeId::from(replica.id);
                 let addr = format!("{}:{}", replica.ipaddr, replica.portno);
                 let replica_addr = format!("{}:{}", replica.ipaddr, replica.rep_portno.unwrap());
 
-                let (socket, host) = crate::addr!(&replica.hostname => addr);
-
-                let replica_p_addr = PeerAddr::new((socket, host));
+                let replica_p_addr = PeerAddr::new_replica(crate::addr!(&replica.hostname => addr),
+                                                           crate::addr!(&replica.hostname => replica_addr));
 
                 addrs.insert(id.into(), replica_p_addr);
             }
@@ -325,8 +324,7 @@ fn client_async_main() {
                 let id = NodeId::from(other.id);
                 let addr = format!("{}:{}", other.ipaddr, other.portno);
 
-                let (socket, host) = crate::addr!(&other.hostname => addr);
-                let client_addr = PeerAddr::new((socket, host));
+                let client_addr = PeerAddr::new(crate::addr!(&other.hostname => addr));
 
                 addrs.insert(id.into(), client_addr);
             }
@@ -342,13 +340,12 @@ fn client_async_main() {
             sk,
             addrs,
             public_keys.clone(),
-            comm_stats.clone(),
+            None
         );
 
         let mut tx = tx.clone();
+
         rt::spawn(async move {
-            //We can have this async initializer no problem, just don't want it to be used to actually send
-            //The requests/control the clients
             println!("Bootstrapping client #{}", u32::from(id));
             let client = fut.await.unwrap();
             println!("Done bootstrapping client #{}", u32::from(id));
@@ -363,6 +360,7 @@ fn client_async_main() {
     for _i in 0..client_count {
         clients.push(rt::block_on(rx.recv()).unwrap());
     }
+
 
     let mut handles = Vec::with_capacity(client_count as usize);
     let keypool = generate_key_pool(1000000);
