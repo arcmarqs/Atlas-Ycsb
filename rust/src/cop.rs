@@ -302,11 +302,10 @@ fn client_async_main() {
     let (tx, mut rx) = channel::new_bounded_async(8);
 
     let comm_stats = None;
+    generate_log(1000);
 
     for i in 0..client_count {
         let id = NodeId::from(first_id + i);
-
-        generate_log(id.0 as u32);
 
         let addrs = {
             let mut addrs = IntMap::new();
