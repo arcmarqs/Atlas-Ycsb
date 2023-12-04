@@ -301,10 +301,10 @@ fn client_async_main() {
 
     let (tx, mut rx) = channel::new_bounded_async(8);
 
-    //generate_log(1000);
 
     for i in 0..client_count {
         let id = NodeId::from(i + first_id);
+        generate_log(id.0);
 
         let addrs = {
             let mut addrs = IntMap::new();
@@ -369,7 +369,7 @@ fn client_async_main() {
     for client in clients {
         let id = client.id();
         let gen = generator.clone();
-        generate_log(id.0);
+        //generate_log(id.0);
 
         let h = std::thread::Builder::new()
             .name(format!("Client {:?}", client.id()))
