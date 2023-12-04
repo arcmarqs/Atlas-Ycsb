@@ -92,9 +92,8 @@ pub fn generate_key_pool(num_keys: usize) -> Pool<String> {
     pool
 }
 
-pub fn generate_kv_pairs() -> HashMap<String,String> {
+pub fn generate_kv_pairs<R: Rng>(rand: &mut R) -> HashMap<String,String> {
     let mut map: HashMap<String,String> = HashMap::new();
-    let mut rand = SplitMix64::from_entropy();
 
     for _ in 0..HASHMAP_LEN {
         let entry: Entry = rand.gen();

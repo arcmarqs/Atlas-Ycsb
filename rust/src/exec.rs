@@ -43,7 +43,7 @@ fn unordered_execution(&self, state: &StateOrchestrator, request: Request<Self, 
                 match state.get(&key) {
                     Some(vec) => {
 
-                        serialize::Reply::Single(vec.as_ref().to_owned())
+                        serialize::Reply::Single(vec.to_vec())
                     },
                     None => serialize::Reply::None,
                 }
@@ -54,7 +54,7 @@ fn unordered_execution(&self, state: &StateOrchestrator, request: Request<Self, 
                 match state.insert(&key, value.to_owned()) {
                     Some(vec) => {
 
-                        serialize::Reply::Single(vec.as_ref().to_owned())
+                        serialize::Reply::Single(vec.to_vec())
                     },
                     None => serialize::Reply::None,
                 }
@@ -64,7 +64,7 @@ fn unordered_execution(&self, state: &StateOrchestrator, request: Request<Self, 
                 match state.remove(&key) {
                     Some(vec) => {
 
-                        serialize::Reply::Single(vec.as_ref().to_owned())
+                        serialize::Reply::Single(vec.to_vec())
                     },
                     None => serialize::Reply::None,
                 }

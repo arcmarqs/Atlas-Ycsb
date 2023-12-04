@@ -522,7 +522,7 @@ fn run_client(client: SMRClient, generator: Arc<Generator>) {
                 Action::Read(ser_key)
             },
             Operation::Insert =>{
-                let map = generate_kv_pairs();
+                let map = generate_kv_pairs(&mut rand);
                 println!("Insert {:?} {:?}",&ser_key,&map);
                 let ser_map = bincode::serialize(&map).expect("failed to serialize map");
                 Action::Insert(ser_key,ser_map)
@@ -535,7 +535,7 @@ fn run_client(client: SMRClient, generator: Arc<Generator>) {
             },
             Operation::Update => {
 
-                let map = generate_kv_pairs();
+                let map = generate_kv_pairs(&mut rand);
                 println!("Update {:?} {:?}",&ser_key,&map);
 
                 let ser_map = bincode::serialize(&map).expect("failed to serialize map");
