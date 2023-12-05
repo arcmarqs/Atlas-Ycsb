@@ -400,7 +400,7 @@ fn run_client(client: SMRClient, generator: Arc<Generator>) {
     let id = client.id().0.clone();
     println!("run client");
     let concurrent_client = ConcurrentClient::from_client(client, get_concurrent_rqs()).unwrap();
-    let mut rand = SplitMix64::from_entropy();
+    let mut rand = SplitMix64::seed_from_u64((6453 + (id*1242)).into());
 
     for _ in 0..100000000 as u64 {
         let key = generator.get_key_zipf(&mut rand);
