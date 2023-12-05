@@ -84,7 +84,7 @@ impl Distribution<Entry> for Standard {
 pub fn generate_key_pool(num_keys: usize) -> Pool<String> {
 
     let pool: Pool<String> = Pool::new();
-    let mut rand = SplitMix64::seed_from_u64(528);
+    let mut rand = SplitMix64::from_entropy();
     for _ in 0..num_keys {
         let _ = pool.create_with(|s| s.push_str(Alphanumeric.sample_string(&mut rand, PRIMARY_KEY_LEN).as_str())).unwrap();
     }    
