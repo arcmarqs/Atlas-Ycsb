@@ -195,77 +195,90 @@ pub fn main() {
 }
 
 fn main_(id: NodeId) {
-    let clients_config = parse_config("./config/clients.config").unwrap();
-    let replicas_config = parse_config("./config/replicas.config").unwrap();
+    let mut replica = {
+        println!("Started working on the replica");
 
-    println!("Read configurations.");
+        //TODO: don't have this hardcoded?
+        let first_cli = NodeId::from(1000u32);
 
-    let mut secret_keys: IntMap<KeyPair> = sk_stream()
-        .take(replicas_config.len())
-        .enumerate()
-        .map(|(id, sk)| (id as u64, sk))
-        .collect();
-    let public_keys: IntMap<PublicKey> = secret_keys
-        .iter()
-        .map(|(id, sk)| (*id, sk.public_key().into()))
-        .collect();
+        let clients_config = parse_config("./config/clients.config").unwrap();
+        let replicas_config = parse_config("./config/replicas.config").unwrap();
 
-    println!("Read keys.");
+        println!("Finished reading replica config.");
 
-    println!("Starting replica {:?}", id);
+        let mut secret_keys: IntMap<KeyPair> = sk_stream()
+            .take(clients_config.len())
+            .enumerate()
+            .map(|(id, sk)| (u64::from(first_cli) + id as u64, sk))
+            .chain(sk_stream()
+                .take(replicas_config.len())
+                .enumerate()
+                .map(|(id, sk)| (id as u64, sk)))
+            .collect();
 
-    let addrs = {
-        let mut addrs = IntMap::new();
+        let public_keys: IntMap<PublicKey> = secret_keys
+            .iter()
+            .map(|(id, sk)| (*id, sk.public_key().into()))
+            .collect();
 
-        for other in &replicas_config {
-            let id = NodeId::from(other.id);
-            let addr = format!("{}:{}", other.ipaddr, other.portno);
-            let replica_addr = format!("{}:{}", other.ipaddr, other.rep_portno.unwrap());
+        println!("Finished reading keys.");
 
-            let otherrep_addr = PeerAddr::new_replica(
-                crate::addr!(&other.hostname => addr),
-                crate::addr!(&other.hostname => replica_addr),
-            );
+        let addrs = {
+            let mut addrs = IntMap::new();
+            for replica in &replicas_config {
+                let id = NodeId::from(replica.id);
+                let addr = format!("{}:{}", replica.ipaddr, replica.portno);
+                let replica_addr = format!("{}:{}", replica.ipaddr, replica.rep_portno.unwrap());
 
-            addrs.insert(id.into(), otherrep_addr);
-        }
+                let (socket, host) = crate::addr!(&replica.hostname => addr);
 
-        for client in &clients_config {
-            let id = NodeId::from(client.id);
-            let addr = format!("{}:{}", client.ipaddr, client.portno);
+                let replica_p_addr = PeerAddr::new(socket, host);
 
-            let replica = PeerAddr::new(crate::addr!(&client.hostname => addr));
+                addrs.insert(id.into(), replica_p_addr);
+            }
 
-            addrs.insert(id.into(), replica);
-        }
+            for other in &clients_config {
+                let id = NodeId::from(other.id);
+                let addr = format!("{}:{}", other.ipaddr, other.portno);
 
-        addrs
+                let (socket, host) = crate::addr!(&other.hostname => addr);
+                let client_addr = PeerAddr::new(socket, host);
+
+                addrs.insert(id.into(), client_addr);
+            }
+
+            addrs
+        };
+
+        /* let comm_stats = Some(Arc::new(CommStats::new(id,
+                                                 first_cli,
+                                                 MicrobenchmarkData::MEASUREMENT_INTERVAL))); */
+
+        let comm_stats = None;
+
+        let sk = secret_keys.remove(id.into()).unwrap();
+
+        let fut = setup_replica(
+            replicas_config.len(),
+            id,
+            sk,
+            addrs,
+            public_keys.clone(),
+            comm_stats,
+        );
+
+        println!("Bootstrapping replica #{}", u32::from(id));
+        let replica = rt::block_on(fut).unwrap();
+        println!("Running replica #{}", u32::from(id));
+
+        //Here we want to launch a statistics thread for each replica since they are on different machines
+        //crate::os_statistics::start_statistics_thread(id);
+
+        replica
     };
 
-    let sk = secret_keys.remove(id.into()).unwrap();
-
-    println!("Setting up replica...");
-    let fut = setup_replica(
-        replicas_config.len(),
-        id,
-        sk,
-        addrs,
-        public_keys.clone(),
-        None,
-    );
-
-    let mut replica = rt::block_on(async move {
-        println!("Bootstrapping replica #{}", u32::from(id));
-        let replica = fut.await.unwrap();
-        println!("Running replica #{}", u32::from(id));
-        replica
-    });
-
+    // run forever
     replica.run().unwrap();
-    //We will only launch a single OS monitoring thread since all replicas also run on the same system
-    // crate::os_statistics::start_statistics_thread(NodeId(0));
-
-    drop((secret_keys, public_keys, clients_config, replicas_config));
 }
 
 fn client_async_main() {
@@ -302,20 +315,22 @@ fn client_async_main() {
     let (tx, mut rx) = channel::new_bounded_async(8);
 
     generate_log(1000);
-
+    let comm_stats = None;
     for i in 0..client_count {
-        let id = NodeId::from(i + first_id);
+        let id = NodeId::from(first_id + i);
+
+        generate_log(id.0 as u32);
 
         let addrs = {
             let mut addrs = IntMap::new();
-
             for replica in &replicas_config {
                 let id = NodeId::from(replica.id);
                 let addr = format!("{}:{}", replica.ipaddr, replica.portno);
                 let replica_addr = format!("{}:{}", replica.ipaddr, replica.rep_portno.unwrap());
 
-                let replica_p_addr = PeerAddr::new_replica(crate::addr!(&replica.hostname => addr),
-                                                           crate::addr!(&replica.hostname => replica_addr));
+                let (socket, host) = crate::addr!(&replica.hostname => addr);
+
+                let replica_p_addr = PeerAddr::new(socket, host);
 
                 addrs.insert(id.into(), replica_p_addr);
             }
@@ -324,7 +339,8 @@ fn client_async_main() {
                 let id = NodeId::from(other.id);
                 let addr = format!("{}:{}", other.ipaddr, other.portno);
 
-                let client_addr = PeerAddr::new(crate::addr!(&other.hostname => addr));
+                let (socket, host) = crate::addr!(&other.hostname => addr);
+                let client_addr = PeerAddr::new(socket, host);
 
                 addrs.insert(id.into(), client_addr);
             }
@@ -340,12 +356,13 @@ fn client_async_main() {
             sk,
             addrs,
             public_keys.clone(),
-            None
+            comm_stats.clone(),
         );
 
         let mut tx = tx.clone();
-
         rt::spawn(async move {
+            //We can have this async initializer no problem, just don't want it to be used to actually send
+            //The requests/control the clients
             println!("Bootstrapping client #{}", u32::from(id));
             let client = fut.await.unwrap();
             println!("Done bootstrapping client #{}", u32::from(id));

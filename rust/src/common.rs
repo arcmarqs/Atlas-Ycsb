@@ -273,7 +273,6 @@ async fn node_config(n: usize, id: NodeId, comm_stats: Option<Arc<CommStats>>) -
     };
 
     let node_config = NodeConfig {
-        id,
         tcp_config: tcp,
         client_pool_config: cp,
     };
@@ -399,14 +398,12 @@ pub async fn setup_client(
     let node = node_config(n, id, comm_stats).await;
 
     let conf = client::ClientConfig {
-        n,
-        f: 1,
         unordered_rq_mode: UnorderedClientMode::BFT,
         node,
         reconfiguration: reconf,
     };
 
-    Client::<ReconfProtocol, KvData, ClientNetworking>::bootstrap::<OrderProtocol>(conf).await
+    Client::<ReconfProtocol, KvData, ClientNetworking>::bootstrap::<OrderProtocol>(id,conf).await
 }
 
 pub async fn setup_replica(
@@ -478,11 +475,7 @@ pub async fn setup_replica(
         Logging,
     > {
         node,
-        view: SeqNo::ZERO,
         next_consensus_seq: SeqNo::ZERO,
-        id,
-        n,
-        f: 1,
         op_config,
         lt_config,
         db_path,
