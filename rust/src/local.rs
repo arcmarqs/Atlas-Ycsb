@@ -306,89 +306,89 @@ fn main_() {
 }
 
 fn run_single_server(id: NodeId) {
-    let mut replica = {
-        println!("Started working on the replica");
+    let clients_config = parse_config("./config/clients.config").unwrap();
+    let replicas_config = parse_config("./config/replicas.config").unwrap();
 
-        //TODO: don't have this hardcoded?
-        let first_cli = NodeId::from(1000u32);
+    println!("Read configurations.");
 
-        let clients_config = parse_config("./config/clients.config").unwrap();
-        let replicas_config = parse_config("./config/replicas.config").unwrap();
+    let mut secret_keys: IntMap<KeyPair> = sk_stream()
+        .take(replicas_config.len())
+        .enumerate()
+        .map(|(id, sk)| (id as u64, sk))
+        .collect();
+    let public_keys: IntMap<PublicKey> = secret_keys
+        .iter()
+        .map(|(id, sk)| (*id, sk.public_key().into()))
+        .collect();
 
-        println!("Finished reading replica config.");
+    println!("Read keys.");
 
-        let mut secret_keys: IntMap<KeyPair> = sk_stream()
-            .take(clients_config.len())
-            .enumerate()
-            .map(|(id, sk)| (u64::from(first_cli) + id as u64, sk))
-            .chain(sk_stream()
-                .take(replicas_config.len())
-                .enumerate()
-                .map(|(id, sk)| (id as u64, sk)))
-            .collect();
+    let replica_id: usize = std::env::args()
+        .nth(1)
+        .expect("No replica specified")
+        .trim()
+        .parse()
+        .expect("Expected an integer");
 
-        let public_keys: IntMap<PublicKey> = secret_keys
-            .iter()
-            .map(|(id, sk)| (*id, sk.public_key().into()))
-            .collect();
+    let replica = &replicas_config[replica_id];
 
-        println!("Finished reading keys.");
-        let addrs = {
-            let mut addrs = IntMap::new();
-            for replica in &replicas_config {
-                let id = NodeId::from(replica.id);
-                let addr = format!("{}:{}", replica.ipaddr, replica.portno);
-                let replica_addr = format!("{}:{}", replica.ipaddr, replica.rep_portno.unwrap());
+    let id = NodeId::from(replica.id);
 
-                let (socket, host) = crate::addr!(&replica.hostname => addr);
+    println!("Starting replica {:?}", id);
 
-                let replica_p_addr = PeerAddr::new(socket, host);
+    let addrs = {
+        let mut addrs = IntMap::new();
 
-                addrs.insert(id.into(), replica_p_addr);
-            }
+        for other in &replicas_config {
+            let id = NodeId::from(other.id);
+            let addr = format!("{}:{}", other.ipaddr, other.portno);
+            let replica_addr = format!("{}:{}", other.ipaddr, other.rep_portno.unwrap());
 
-            for other in &clients_config {
-                let id = NodeId::from(other.id);
-                let addr = format!("{}:{}", other.ipaddr, other.portno);
+            let (socket, host) = crate::addr!(&replica.hostname => addr);
 
-                let (socket, host) = crate::addr!(&other.hostname => addr);
-                let client_addr = PeerAddr::new(socket, host);
+            let replica_p_addr = PeerAddr::new(socket, host);
 
-                addrs.insert(id.into(), client_addr);
-            }
+            addrs.insert(id.into(), replica_p_addr);
+        }
 
-            addrs
-        };
+        for client in &clients_config {
+            let id = NodeId::from(client.id);
+            let addr = format!("{}:{}", client.ipaddr, client.portno);
 
-        /* let comm_stats = Some(Arc::new(CommStats::new(id,
-                                                 first_cli,
-                                                 MicrobenchmarkData::MEASUREMENT_INTERVAL))); */
+            
+            let (socket, host) = crate::addr!(&client.hostname => addr);
+            let client_addr = PeerAddr::new(socket, host);
 
-        let comm_stats = None;
+            addrs.insert(id.into(), client_addr);
+        }
 
-        let sk = secret_keys.remove(id.into()).unwrap();
-
-        let fut = setup_replica(
-            replicas_config.len(),
-            id,
-            sk,
-            addrs,
-            public_keys.clone(),
-            comm_stats,
-        );
-
-        println!("Bootstrapping replica #{}", u32::from(id));
-        let replica = rt::block_on(fut).unwrap();
-        println!("Running replica #{}", u32::from(id));
-
-        //Here we want to launch a statistics thread for each replica since they are on different machines
-        //crate::os_statistics::start_statistics_thread(id);
-
-        replica
+        addrs
     };
 
-    // run forever
+    let sk = secret_keys.remove(id.into()).unwrap();
+
+    println!("Setting up replica...");
+    let fut = setup_replica(
+        replicas_config.len(),
+        id,
+        sk,
+        addrs,
+        public_keys.clone(),
+        None,
+    );
+
+    let mut replica = rt::block_on(async move {
+        println!("Bootstrapping replica #{}", u32::from(id));
+        let replica = fut.await.unwrap();
+        println!("Running replica #{}", u32::from(id));
+        replica
+    });
+
     replica.run().unwrap();
+    //We will only launch a single OS monitoring thread since all replicas also run on the same system
+    // crate::os_statistics::start_statistics_thread(NodeId(0));
+
+    drop((secret_keys, public_keys, clients_config, replicas_config));
 }
 
 fn client_async_main() {
@@ -520,7 +520,7 @@ fn run_client(client: SMRClient, generator: Arc<Generator>) {
 
     for _ in 0..10000000 as u64 {
         let key = generator.get_key_zipf(&mut rand);
-        let mut ser_key = vec![0,0,0,0];
+        let mut ser_key = vec![];
         ser_key.extend(key.as_bytes().iter());
         let op: Operation = rand.sample(Standard);
 
@@ -531,7 +531,7 @@ fn run_client(client: SMRClient, generator: Arc<Generator>) {
             },
             Operation::Insert =>{
                 let map = generate_kv_pairs(&mut rand);
-                println!("Insert {:?} {:?}",&ser_key,&map);
+                println!("Insert {:?} {:?}", &key,&map);
                 let ser_map = bincode::serialize(&map).expect("failed to serialize map");
                 Action::Insert(ser_key,ser_map)
             },
@@ -544,7 +544,7 @@ fn run_client(client: SMRClient, generator: Arc<Generator>) {
             Operation::Update => {
 
                 let map = generate_kv_pairs(&mut rand);
-                println!("Update {:?} {:?}",&ser_key,&map);
+                println!("Update {:?} {:?}",&key,&map);
 
                 let ser_map = bincode::serialize(&map).expect("failed to serialize map");
                 Action::Insert(ser_key,ser_map)

@@ -40,7 +40,7 @@ fn unordered_execution(&self, state: &StateOrchestrator, request: Request<Self, 
     ) -> Reply<Self, StateOrchestrator> {
         let reply_inner = match request.as_ref() {
             serialize::Action::Read(key) => {
-                match state.get(&key) {
+                match state.get(key) {
                     Some(vec) => {
 
                         serialize::Reply::Single(vec.to_vec())
@@ -51,7 +51,7 @@ fn unordered_execution(&self, state: &StateOrchestrator, request: Request<Self, 
             }
             serialize::Action::Insert(key, value) => {
                 
-                match state.insert(&key, value.to_owned()) {
+                match state.insert(key, value.to_owned()) {
                     Some(vec) => {
 
                         serialize::Reply::Single(vec.to_vec())
@@ -61,7 +61,7 @@ fn unordered_execution(&self, state: &StateOrchestrator, request: Request<Self, 
             }
             serialize::Action::Remove(key) => { 
 
-                match state.remove(&key) {
+                match state.remove(key) {
                     Some(vec) => {
 
                         serialize::Reply::Single(vec.to_vec())
