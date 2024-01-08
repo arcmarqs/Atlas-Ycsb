@@ -19,23 +19,23 @@ use atlas_communication::config::{ClientPoolConfig, MioConfig, NodeConfig, TcpCo
 use atlas_communication::mio_tcp::MIOTcpNode;
 use atlas_core::serialize::{ClientServiceMsg, Service};
 use atlas_core::smr::networking::NodeWrap;
+use atlas_core::state_transfer::STMsg;
 use atlas_decision_log::config::DecLogConfig;
 use atlas_decision_log::serialize::LogSerialization;
 use atlas_decision_log::Log;
-use atlas_divisible_state::state_orchestrator::StateOrchestrator;
 use atlas_log_transfer::config::LogTransferConfig;
 use atlas_log_transfer::messages::serialize::LTMsg;
 use atlas_log_transfer::CollabLogTransfer;
 use atlas_metrics::benchmarks::CommStats;
 use atlas_metrics::InfluxDBArgs;
-use atlas_persistent_log::stateful_logs::divisible_state::DivisibleStatePersistentLog;
+use atlas_persistent_log::stateful_logs::monolithic_state::MonStatePersistentLog;
 use atlas_reconfiguration::config::ReconfigurableNetworkConfig;
 use atlas_reconfiguration::message::{NodeTriple, ReconfData};
 use atlas_reconfiguration::network_reconfig::NetworkInfo;
 use atlas_reconfiguration::ReconfigurableNodeProtocol;
-use atlas_smr_execution::SingleThreadedDivExecutor;
-use atlas_smr_replica::config::{DivisibleStateReplicaConfig, ReplicaConfig};
-use atlas_smr_replica::server::divisible_state_server::DivStReplica;
+use atlas_smr_execution::{SingleThreadedDivExecutor, SingleThreadedMonExecutor};
+use atlas_smr_replica::config::{ReplicaConfig, MonolithicStateReplicaConfig};
+use atlas_smr_replica::server::monolithic_server::MonReplica;
 use atlas_view_transfer::config::ViewTransferConfig;
 use atlas_view_transfer::message::serialize::ViewTransfer;
 use atlas_view_transfer::SimpleViewTransferProtocol;
@@ -43,6 +43,10 @@ use febft_pbft_consensus::bft::config::{PBFTConfig, ProposerConfig};
 use febft_pbft_consensus::bft::message::serialize::PBFTConsensus;
 use febft_pbft_consensus::bft::sync::view::ViewInfo;
 use febft_pbft_consensus::bft::PBFTOrderProtocol;
+use febft_state_transfer::CollabStateTransfer;
+use febft_state_transfer::config::StateTransferConfig;
+use febft_state_transfer::message::CstMessage;
+use febft_state_transfer::message::serialize::CSTMsg;
 use intmap::IntMap;
 use konst::primitive::{parse_u128, parse_u32, parse_usize};
 use konst::unwrap_ctx;
@@ -52,9 +56,7 @@ use rustls::{Certificate, ClientConfig, PrivateKey, RootCertStore, ServerConfig}
 use rustls_pemfile::{read_one, Item};
 
 use crate::exec::KVApp;
-use crate::serialize::KvData;
-use progressive_state_transfer::stp::message::serialize::STMsg;
-use progressive_state_transfer::stp::{BtStateTransfer, StateTransferConfig};
+use crate::serialize::{KvData, State};
 
 #[macro_export]
 macro_rules! addr {
@@ -289,7 +291,7 @@ async fn node_config(n: usize, id: NodeId, comm_stats: Option<Arc<CommStats>>) -
 
 pub type ReconfigurationMessage = ReconfData;
 pub type OrderProtocolMessage = PBFTConsensus<KvData>;
-pub type StateTransferMessage = STMsg<StateOrchestrator>;
+pub type StateTransferMessage = CSTMsg<State>;
 pub type DecLogMsg = LogSerialization<KvData, OrderProtocolMessage, OrderProtocolMessage>;
 pub type LogTransferMessage = LTMsg<KvData, OrderProtocolMessage, OrderProtocolMessage, DecLogMsg>;
 pub type ViewTransferMessage = ViewTransfer<OrderProtocolMessage>;
@@ -316,8 +318,8 @@ pub type ReplicaNetworking = NodeWrap<
 pub type ClientNetworking = Network<ClientServiceMsg<KvData>>;
 
 /// Set up the persistent logging type with the existing data handles
-pub type Logging = DivisibleStatePersistentLog<
-    StateOrchestrator,
+pub type Logging = MonStatePersistentLog<
+    State,
     KvData,
     OrderProtocolMessage,
     OrderProtocolMessage,
@@ -331,12 +333,12 @@ pub type OrderProtocol = PBFTOrderProtocol<KvData, ReplicaNetworking>;
 pub type DecisionLog = Log<KvData, OrderProtocol, ReplicaNetworking, Logging>;
 pub type LogTransferProtocol =
     CollabLogTransfer<KvData, OrderProtocol, DecisionLog, ReplicaNetworking, Logging>;
-pub type StateTransferProtocol = BtStateTransfer<StateOrchestrator, ReplicaNetworking, Logging>;
+pub type StateTransferProtocol = CollabStateTransfer<State, ReplicaNetworking, Logging>;
 pub type ViewTransferProt = SimpleViewTransferProtocol<OrderProtocol, ReplicaNetworking>;
-pub type SMRReplica = DivStReplica<
+pub type SMRReplica = MonReplica<
     ReconfProtocol,
-    SingleThreadedDivExecutor,
-    StateOrchestrator,
+    SingleThreadedMonExecutor,
+    State,
     KVApp,
     OrderProtocol,
     DecisionLog,
@@ -464,7 +466,7 @@ pub async fn setup_replica(
 
     let conf = ReplicaConfig::<
         ReconfProtocol,
-        StateOrchestrator,
+        State,
         KvData,
         OrderProtocol,
         DecisionLog,
@@ -486,13 +488,13 @@ pub async fn setup_replica(
         vt_config: vt_config,
     };
 
-    let div_conf = DivisibleStateReplicaConfig {
+    let mon_conf = MonolithicStateReplicaConfig {
         service,
         replica_config: conf,
         st_config,
     };
 
-    DivStReplica::bootstrap(div_conf).await
+    MonReplica::bootstrap(mon_conf).await
 }
 
 async fn get_batch_size() -> usize {

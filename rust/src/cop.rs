@@ -103,8 +103,6 @@ fn generate_log(id: u32) {
         .logger(Logger::builder().appender("replica").build("atlas_smr_replica", LevelFilter::Debug))
         .logger(Logger::builder().appender("consensus").build("febft_pbft_consensus", LevelFilter::Debug))
         .logger(Logger::builder().appender("state_transfer").build("febft_state_transfer", LevelFilter::Debug))
-        .logger(Logger::builder().appender("state_transfer").build("progressive_state_transfer", LevelFilter::Debug))
-        .logger(Logger::builder().appender("state_transfer").build("atlas_divisible_state", LevelFilter::Debug))
 
         .build(Root::builder().appender("file").build(LevelFilter::Debug), ).context("MsgLog Error").unwrap();
 
@@ -157,8 +155,7 @@ pub fn main() {
                 with_metrics(atlas_smr_replica::metric::metrics()),
                 with_metrics(atlas_log_transfer::metrics::metrics()),
                 with_metrics(atlas_view_transfer::metrics::metrics()),
-                with_metrics(atlas_divisible_state::metrics::metrics()),
-                with_metrics(progressive_state_transfer::stp::metrics::metrics()),
+                with_metrics(febft_state_transfer::metrics::metrics()),
                 with_metric_level(MetricLevel::Info),
             ],
             influx_db_config(node_id),

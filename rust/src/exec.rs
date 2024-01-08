@@ -1,49 +1,40 @@
 use std::sync::Arc;
 
-use atlas_divisible_state::state_orchestrator::StateOrchestrator;
-
 use atlas_common::error::*;
 use atlas_smr_application::app::{Application, Request, Reply, UnorderedBatch, BatchReplies, UpdateBatch};
 
 
 
-use crate::serialize::{KvData, self};
+use crate::serialize::{KvData, self, State};
 
 #[derive(Default)]
 pub struct KVApp;
 
-impl Application<StateOrchestrator> for KVApp {
+impl Application<State> for KVApp {
     type AppData = KvData;
 
-fn initial_state() -> Result<StateOrchestrator> {
-    // create the state
+    fn initial_state() -> Result<State> {
+     
+        let state = State::new();   
+                
+        Ok(state)
+    }
 
-    let id: u32 = std::env::args()
-    .nth(1).expect("No replica specified")
-    .trim().parse().expect("Expected an integer");
-
-    let path = format!("{}{}", "./appdata_",id);
-
-    let state = StateOrchestrator::new(&path);   
-            
-    Ok(state)
-}
-
-fn unordered_execution(&self, state: &StateOrchestrator, request: Request<Self, StateOrchestrator>) -> Reply<Self, StateOrchestrator> {
+fn unordered_execution(&self, state: &State, request: Request<Self, State>) -> Reply<Self, State> {
         todo!()
     }
 
     fn update(
         &self,
-        state: &mut StateOrchestrator,
-        request: Request<Self, StateOrchestrator>,
-    ) -> Reply<Self, StateOrchestrator> {
+        state: &mut State,
+        request: Request<Self, State>,
+    ) -> Reply<Self, State> {
         let reply_inner = match request.as_ref() {
             serialize::Action::Read(key) => {
-                match state.get(key) {
+                match state.db.get(key) {
                     Some(vec) => {
 
-                        serialize::Reply::Single(vec.to_vec())
+                        serialize::Reply::Single(vec.to_owned())
                     },
                     None => serialize::Reply::None,
                 }
@@ -51,20 +42,20 @@ fn unordered_execution(&self, state: &StateOrchestrator, request: Request<Self, 
             }
             serialize::Action::Insert(key, value) => {
                 
-                match state.insert(key, value.to_owned()) {
+                match state.db.insert(key.to_owned(), value.to_owned()) {
                     Some(vec) => {
 
-                        serialize::Reply::Single(vec.to_vec())
+                        serialize::Reply::Single(vec.to_owned())
                     },
                     None => serialize::Reply::None,
                 }
             }
             serialize::Action::Remove(key) => { 
 
-                match state.remove(key) {
+                match state.db.remove(key) {
                     Some(vec) => {
 
-                        serialize::Reply::Single(vec.to_vec())
+                        serialize::Reply::Single(vec.to_owned())
                     },
                     None => serialize::Reply::None,
                 }
@@ -72,36 +63,35 @@ fn unordered_execution(&self, state: &StateOrchestrator, request: Request<Self, 
         };
 
        // state.db.flush();
-
         Arc::new(reply_inner)
     }
 
-fn unordered_batched_execution(
+fn update_batch(
         &self,
-        state: &StateOrchestrator,
-        requests: UnorderedBatch<Request<Self, StateOrchestrator>>,
-    ) -> BatchReplies<Reply<Self, StateOrchestrator>> {
-        let mut reply_batch = BatchReplies::with_capacity(requests.len());
+        state: &mut State,
+        batch: UpdateBatch<Request<Self, State>>,
+    ) -> BatchReplies<Reply<Self, State>> {
+        let mut reply_batch = BatchReplies::with_capacity(batch.len());
 
-        for unordered_req in requests.into_inner() {
-            let (peer_id, sess, opid, req) = unordered_req.into_inner();
-            let reply = self.unordered_execution(&state, req);
+        for update in batch.into_inner() {
+            let (peer_id, sess, opid, req) = update.into_inner();
+            let reply = self.update(state, req);
             reply_batch.add(peer_id, sess, opid, reply);
         }
 
         reply_batch
     }
 
-fn update_batch(
+fn unordered_batched_execution(
         &self,
-        state: &mut StateOrchestrator,
-        batch: UpdateBatch<Request<Self, StateOrchestrator>>,
-    ) -> BatchReplies<Reply<Self, StateOrchestrator>> {
-        let mut reply_batch = BatchReplies::with_capacity(batch.len());
-    
-        for update in batch.into_inner() {
-            let (peer_id, sess, opid, req) = update.into_inner();
-            let reply = self.update(state, req);
+        state: &State,
+        requests: UnorderedBatch<Request<Self, State>>,
+    ) -> BatchReplies<Reply<Self, State>> {
+        let mut reply_batch = BatchReplies::with_capacity(requests.len());
+
+        for unordered_req in requests.into_inner() {
+            let (peer_id, sess, opid, req) = unordered_req.into_inner();
+            let reply = self.unordered_execution(&state, req);
             reply_batch.add(peer_id, sess, opid, reply);
         }
 

@@ -48,13 +48,12 @@ atlas-smr-replica = { path = "../../Atlas/Atlas-SMR-Replica" }
 atlas-client = { path = "../../Atlas/Atlas-Client" }
 atlas-metrics = { path = "../../Atlas/Atlas-Metrics" }
 atlas-persistent-log = { path = "../../Atlas/Atlas-Persistent-Log" }
-atlas-log-transfer = { path = "../../Atlas/Atlas-Log-Transfer"}
-atlas-decision-log = { path = "../../Atlas/Atlas-Decision-Log", features = ["serialize_serde"]}
+atlas-log-transfer = { path = "../../Atlas/Atlas-Log-Transfer", features = ["serialize_serde"] }
+atlas-decision-log = { path = "../../Atlas/Atlas-Decision-Log", features = ["serialize_serde"] }
 atlas-smr-execution = { path = "../../Atlas/Atlas-SMR-Execution" }
-atlas-view-transfer = { path = "../../Atlas/Atlas-View-Transfer"}
+atlas-view-transfer = { path = "../../Atlas/Atlas-View-Transfer", features = ["serialize_serde"] }
 atlas-reconfiguration = { path = "../../Atlas/Atlas-Reconfiguration" }
-atlas-divisible-state = { path = "../../Atlas/Atlas-Divisible-State"}
-progressive-state-transfer = {path = "../../progressive-state-transfer"}
+febft-state-transfer = { path = "../../febft/febft-state-transfer", features = ["serialize_serde"] }
 
 [dependencies.febft-pbft-consensus]
 path = "../../febft/febft-pbft-consensus"

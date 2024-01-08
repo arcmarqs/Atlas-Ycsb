@@ -9,15 +9,10 @@ use atlas_common::collections::HashMap;
 use atlas_common::peer_addr::PeerAddr;
 
 use intmap::IntMap;
-use nolock::queues::mpsc::jiffy::{async_queue, AsyncSender};
-
 use atlas_client::client::ordered_client::Ordered;
 use atlas_common::crypto::signature::{KeyPair, PublicKey};
-use atlas_common::error::*;
 use atlas_common::node_id::NodeId;
 use atlas_common::{async_runtime as rt, channel, init, InitConfig};
-use atlas_metrics::{MetricLevel, with_metric_level, with_metrics};
-use progressive_state_transfer;
 use log::LevelFilter;
 use log4rs::append::console::ConsoleAppender;
 use konst::primitive::parse_usize;
