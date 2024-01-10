@@ -31,6 +31,7 @@ use atlas_common::node_id::NodeId;
 use atlas_common::peer_addr::PeerAddr;
 use atlas_metrics::{MetricLevel, with_metric_level, with_metrics};
 use rand_core::SeedableRng;
+use rand_distr::Standard;
 use rand_xoshiro::SplitMix64;
 
 use crate::common::*;
@@ -419,11 +420,11 @@ fn run_client(client: SMRClient, generator: Arc<Generator>) {
     let concurrent_client = ConcurrentClient::from_client(client, get_concurrent_rqs()).unwrap();
     let mut rand = SplitMix64::seed_from_u64((6453 + (id*1242)).into());
 
-    for _ in 0..100000000 as u64 {
+    for _ in 0..10000000 as u64 {
         let key = generator.get_key_zipf(&mut rand);
-        let mut ser_key = vec![0,0,0,0];
+        let mut ser_key = vec![];
         ser_key.extend(key.as_bytes().iter());
-        let op: Operation = rand.gen();
+        let op: Operation = rand.sample(Standard);
 
         let request = match &op {
             Operation::Read => {
@@ -432,7 +433,7 @@ fn run_client(client: SMRClient, generator: Arc<Generator>) {
             },
             Operation::Insert =>{
                 let map = generate_kv_pairs(&mut rand);
-                println!("Insert {:?} {:?}",&ser_key,&map);
+                println!("Insert {:?} {:?}", &key,&map);
                 let ser_map = bincode::serialize(&map).expect("failed to serialize map");
                 Action::Insert(ser_key,ser_map)
             },
@@ -445,7 +446,7 @@ fn run_client(client: SMRClient, generator: Arc<Generator>) {
             Operation::Update => {
 
                 let map = generate_kv_pairs(&mut rand);
-                println!("Update {:?} {:?}",&ser_key,&map);
+                println!("Update {:?} {:?}",&key,&map);
 
                 let ser_map = bincode::serialize(&map).expect("failed to serialize map");
                 Action::Insert(ser_key,ser_map)
