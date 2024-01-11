@@ -6,13 +6,13 @@ use rand_xoshiro::{self, SplitMix64};
 use rand_core::SeedableRng;
 use rand_distr::{Alphanumeric, Distribution, Standard, WeightedIndex, Zipf, Uniform};
 use sharded_slab::Pool;
-const PRIMARY_KEY_LEN: usize = 16;
-const SECONDARY_KEY_LEN: usize = 8;
-const VALUE_LEN: usize = 8;
-const HASHMAP_LEN: usize = 1;
+const PRIMARY_KEY_LEN: usize = 32;
+const SECONDARY_KEY_LEN: usize = 32;
+const VALUE_LEN: usize = 64;
+const HASHMAP_LEN: usize = 11;
 
 // for more "randomness" in the distribution this should be between  ]0.0,0.24[
-const ZIPF_CONSTANT: f64 = 0.0;
+const ZIPF_CONSTANT: f64 = 0.0034;
 
 
 const INSERT_OPS: u32 = 2;
