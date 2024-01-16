@@ -40,7 +40,7 @@ fn initial_state() -> Result<StateOrchestrator> {
         state.insert(key.as_bytes(), ser_map);
     }
 
-
+    println!("state chsum {:?}", state.db.0.checksum());
     Ok(state)
 }
 
