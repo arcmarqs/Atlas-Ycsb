@@ -9,16 +9,16 @@ use sharded_slab::Pool;
 
 const PRIMARY_KEY_LEN: usize = 32;
 const SECONDARY_KEY_LEN: usize = 16;
-const VALUE_LEN: usize = 64;
-const HASHMAP_LEN: usize = 6;
+const VALUE_LEN: usize = 84;
+const HASHMAP_LEN: usize = 10;
 
 // for more "randomness" in the distribution this should be between  ]0.0,0.24[
 const ZIPF_CONSTANT: f64 = 0.0;
 
 
-const INSERT_OPS: u32 = 1;
-const READ_OPS: u32 = 1;
-const REMOVE_OPS: u32 = 1;
+const INSERT_OPS: u32 = 0;
+const READ_OPS: u32 = 0;
+const REMOVE_OPS: u32 = 0;
 const UPDATE_OPS: u32 = 1;
 
 #[derive(Debug)]
@@ -50,6 +50,10 @@ impl Generator {
     //get a random, uniformly distributed key
     pub fn get_rand_key<R: Rng + ?Sized>(&self, rng: &mut R) -> String {
         self.pool.get(Uniform::new(0, self.size).sample(rng) as usize).unwrap().clone()
+    }
+
+    pub fn get(&self,idx: usize) -> String {
+        self.pool.get(idx).unwrap().clone()
     }
 }
 
@@ -83,9 +87,8 @@ impl Distribution<Entry> for Standard {
 }
 
 pub fn generate_key_pool(num_keys: usize) -> Pool<String> {
-
     let pool: Pool<String> = Pool::new();
-    let mut rand = SplitMix64::from_entropy();
+    let mut rand = SplitMix64::seed_from_u64(160120241634);
     for _ in 0..num_keys {
         let _ = pool.create_with(|s| s.push_str(Alphanumeric.sample_string(&mut rand, PRIMARY_KEY_LEN).as_str())).unwrap();
     }    

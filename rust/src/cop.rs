@@ -381,8 +381,8 @@ fn client_async_main() {
 
 
     let mut handles = Vec::with_capacity(client_count as usize);
-    let keypool = generate_key_pool(1000000);
-    let generator = Arc::new(Generator::new(keypool, 1000000));
+    let keypool = generate_key_pool(128000);
+    let generator = Arc::new(Generator::new(keypool, 128000));
 
     for client in clients {
         let id = client.id();

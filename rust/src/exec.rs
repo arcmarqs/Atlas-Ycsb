@@ -4,10 +4,11 @@ use atlas_divisible_state::state_orchestrator::StateOrchestrator;
 
 use atlas_common::error::*;
 use atlas_smr_application::app::{Application, Request, Reply, UnorderedBatch, BatchReplies, UpdateBatch};
+use rand_core::SeedableRng;
+use rand_xoshiro::SplitMix64;
 
 
-
-use crate::serialize::{KvData, self};
+use crate::{serialize::{KvData, self}, generator::{generate_key_pool, Generator, generate_kv_pairs}};
 
 #[derive(Default)]
 pub struct KVApp;
@@ -24,8 +25,22 @@ fn initial_state() -> Result<StateOrchestrator> {
 
     let path = format!("{}{}", "./appdata_",id);
 
-    let state = StateOrchestrator::new(&path);   
-            
+    let mut state = StateOrchestrator::new(&path);
+
+    let keypool = generate_key_pool(128000);   
+    let generator = Generator::new(keypool, 128000);
+    let mut rand =  SplitMix64::seed_from_u64(23423452345);
+    for i in 0..128000 {
+        let key = generator.get(i);
+
+        let map = generate_kv_pairs(&mut rand);
+
+        let ser_map = bincode::serialize(&map).expect("failed to serialize map");
+
+        state.insert(key.as_bytes(), ser_map);
+    }
+
+
     Ok(state)
 }
 
