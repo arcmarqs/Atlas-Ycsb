@@ -27,7 +27,7 @@ fn initial_state() -> Result<StateOrchestrator> {
 
     let mut state = StateOrchestrator::new(&path);
 
-   /*  let keypool = generate_key_pool(128000);   
+    let keypool = generate_key_pool(128000);   
     let generator = Generator::new(keypool, 128000);
     let mut rand =  SplitMix64::seed_from_u64(23423452345);
     for i in 0..128000 {
@@ -41,7 +41,7 @@ fn initial_state() -> Result<StateOrchestrator> {
     }
 
 
-    println!("state chsum {:?}", state.db.0.checksum());*/
+    println!("state chsum {:?}", state.db.0.checksum());
     Ok(state)
 }
 
