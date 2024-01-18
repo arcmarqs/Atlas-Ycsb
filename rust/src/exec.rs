@@ -26,22 +26,7 @@ fn initial_state() -> Result<StateOrchestrator> {
     let path = format!("{}{}", "./appdata_",id);
 
     let mut state = StateOrchestrator::new(&path);
-
-    let keypool = generate_key_pool(128000);   
-    let generator = Generator::new(keypool, 128000);
-    let mut rand =  SplitMix64::seed_from_u64(23423452345);
-    for i in 0..128000 {
-        let key = generator.get(i);
-
-        let map = generate_kv_pairs(&mut rand);
-
-        let ser_map = bincode::serialize(&map).expect("failed to serialize map");
-
-        state.insert(key.as_bytes(), ser_map);
-    }
-
-
-    println!("state chsum {:?}", state.db.0.checksum());
+    
     Ok(state)
 }
 

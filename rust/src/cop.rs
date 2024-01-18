@@ -35,7 +35,7 @@ use rand_distr::Standard;
 use rand_xoshiro::SplitMix64;
 
 use crate::common::*;
-use crate::generator::{generate_kv_pairs, Operation, Generator, generate_key_pool};
+use crate::generator::{generate_kv_pairs, Operation, Generator, generate_key_pool, NUM_KEYS};
 use crate::serialize::Action;
 
 #[derive(Debug)]
@@ -381,17 +381,17 @@ fn client_async_main() {
 
 
     let mut handles = Vec::with_capacity(client_count as usize);
-    let keypool = generate_key_pool(128000);
-    let generator = Arc::new(Generator::new(keypool, 128000));
+    let keypool = generate_key_pool(NUM_KEYS);
+    let generator = Arc::new(Generator::new(keypool, NUM_KEYS.try_into().unwrap()));
 
     for client in clients {
         let id = client.id();
         let gen = generator.clone();
         //generate_log(id.0);
-
+        let cli_len = client_count as usize;
         let h = std::thread::Builder::new()
             .name(format!("Client {:?}", client.id()))
-            .spawn(move || { run_client(client, gen) })
+            .spawn(move || { run_client(client, gen,cli_len) })
             .expect(format!("Failed to start thread for client {:?} ", &id.id()).as_str());
 
         handles.push(h);
@@ -414,11 +414,42 @@ fn sk_stream() -> impl Iterator<Item=KeyPair> {
     })
 }
 
-fn run_client(client: SMRClient, generator: Arc<Generator>) {
+fn run_client(client: SMRClient, generator: Arc<Generator>, n_clients: usize) {
     let id = client.id().0.clone();
     println!("run client");
     let concurrent_client = ConcurrentClient::from_client(client, get_concurrent_rqs()).unwrap();
     let mut rand = SplitMix64::seed_from_u64((6453 + (id*1242)).into());
+    let rounds = NUM_KEYS/n_clients;
+    let rem = NUM_KEYS%n_clients;
+    //loading phase first
+    println!(" number of loading rounds {:?} with remainder {:?}", rounds, rem);
+    for i in 0..rounds {
+
+        if let Some(key) = generator.get(i*n_clients + id as usize) {
+        let map = generate_kv_pairs(&mut rand);
+            
+        let ser_map = bincode::serialize(&map).expect("failed to serialize map");
+        let req = Action::Insert(key.as_bytes().to_vec(),ser_map);
+        let _res = rt::block_on(concurrent_client.update::<Ordered>(Arc::from(req))).expect("error");
+        } else {
+            println!("No key with idx {:?}", i+id as usize);
+        }
+    }
+
+    if id == 1 {
+        for i in 0..rem {   
+        if let Some(key) = generator.get(rounds*n_clients + i as usize) {
+            let map = generate_kv_pairs(&mut rand);
+                
+            let ser_map = bincode::serialize(&map).expect("failed to serialize map");
+            let req = Action::Insert(key.as_bytes().to_vec(),ser_map);
+            let _res = rt::block_on(concurrent_client.update::<Ordered>(Arc::from(req))).expect("error");
+            } else {
+                println!("No key with idx {:?}", i+id as usize);
+            }
+        }
+    }
+
 
     for _ in 0..10000000 as u64 {
         let key = generator.get_key_zipf(&mut rand);

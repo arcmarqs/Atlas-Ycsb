@@ -9,13 +9,13 @@ use sharded_slab::Pool;
 
 const PRIMARY_KEY_LEN: usize = 32;
 const SECONDARY_KEY_LEN: usize = 16;
-const VALUE_LEN: usize = 84;
+const VALUE_LEN: usize = 82;
 const HASHMAP_LEN: usize = 10;
 
 // for more "randomness" in the distribution this should be between  ]0.0,0.24[
 const ZIPF_CONSTANT: f64 = 0.0;
 
-
+pub const NUM_KEYS: usize = 128000;
 const INSERT_OPS: u32 = 0;
 const READ_OPS: u32 = 0;
 const REMOVE_OPS: u32 = 0;
@@ -52,8 +52,12 @@ impl Generator {
         self.pool.get(Uniform::new(0, self.size).sample(rng) as usize).unwrap().clone()
     }
 
-    pub fn get(&self,idx: usize) -> String {
-        self.pool.get(idx).unwrap().clone()
+    pub fn get(&self,idx: usize) -> Option<String> {
+        if let Some(res) = self.pool.get(idx) {
+            Some(res.clone())
+        } else {
+            None
+        }
     }
 }
 
