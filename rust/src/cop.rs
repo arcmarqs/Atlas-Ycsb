@@ -416,13 +416,12 @@ fn sk_stream() -> impl Iterator<Item=KeyPair> {
 
 fn run_client(client: SMRClient, generator: Arc<Generator>, n_clients: usize) {
     let id = client.id().0.clone();
-    println!("run client");
     let concurrent_client = ConcurrentClient::from_client(client, get_concurrent_rqs()).unwrap();
     let mut rand = SplitMix64::seed_from_u64((6453 + (id*1242)).into());
     let rounds = NUM_KEYS/n_clients;
     let rem = NUM_KEYS%n_clients;
     //loading phase first
-    println!(" number of loading rounds {:?} with remainder {:?}", rounds, rem);
+    println!("client {:?} loading {:?} rounds with {:?} remainder",id, rounds, rem);
     for i in 0..rounds {
 
         if let Some(key) = generator.get(i*n_clients + id as usize) {
@@ -449,6 +448,8 @@ fn run_client(client: SMRClient, generator: Arc<Generator>, n_clients: usize) {
             }
         }
     }
+
+    println!(" {:?} Loading finished", id);
 
 
     for _ in 0..10000000 as u64 {
