@@ -449,9 +449,6 @@ fn run_client(client: SMRClient, generator: Arc<Generator>, n_clients: usize) {
         }
     }
 
-    println!(" {:?} Loading finished", id);
-
-
     for _ in 0..10000000 as u64 {
         let key = generator.get_key_zipf(&mut rand);
         let mut ser_key = vec![];
@@ -460,17 +457,17 @@ fn run_client(client: SMRClient, generator: Arc<Generator>, n_clients: usize) {
 
         let request = match &op {
             Operation::Read => {
-                println!("Read {:?}",&ser_key);
+              //  println!("Read {:?}",&ser_key);
                 Action::Read(ser_key)
             },
             Operation::Insert =>{
                 let map = generate_kv_pairs(&mut rand);
-                println!("Insert {:?} {:?}", &key,&map);
+               // println!("Insert {:?} {:?}", &key,&map);
                 let ser_map = bincode::serialize(&map).expect("failed to serialize map");
                 Action::Insert(ser_key,ser_map)
             },
             Operation::Remove =>{ 
-                println!("Remove {:?}",&ser_key);
+                //println!("Remove {:?}",&ser_key);
 
                 Action::Remove(ser_key)
 
@@ -478,7 +475,7 @@ fn run_client(client: SMRClient, generator: Arc<Generator>, n_clients: usize) {
             Operation::Update => {
 
                 let map = generate_kv_pairs(&mut rand);
-                println!("Update {:?} {:?}",&key,&map);
+                println!("Update {:?}",&key);
 
                 let ser_map = bincode::serialize(&map).expect("failed to serialize map");
                 Action::Insert(ser_key,ser_map)
