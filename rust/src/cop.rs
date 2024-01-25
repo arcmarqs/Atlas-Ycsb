@@ -483,7 +483,7 @@ fn run_client(client: SMRClient, generator: Arc<Generator>, n_clients: usize) {
         };
 
 
-        let res = match rt::block_on(concurrent_client.update::<Ordered>(Arc::from(request))).expect("error").as_ref() {
+        let _ = match rt::block_on(concurrent_client.update::<Ordered>(Arc::from(request))).expect("error").as_ref() {
             crate::serialize::Reply::None => None,
             crate::serialize::Reply::Single(bytes) =>{
             let map: HashMap<String,String> = bincode::deserialize(&bytes).expect("failed to deserialize reply");
@@ -491,7 +491,7 @@ fn run_client(client: SMRClient, generator: Arc<Generator>, n_clients: usize) {
             },
         };
 
-        println!("Reply: {:?}", &res);
+        //println!("Reply: {:?}", &res);
     }
     
 }
