@@ -497,10 +497,17 @@ fn run_client(client: SMRClient, generator: Arc<Generator>, n_clients: usize) {
             let map = generate_kv_pairs(&mut rand);
             let ser_map = bincode::serialize(&map).expect("failed to serialize map");
             let req = Action::Insert(key.as_bytes().to_vec(), ser_map);
-            rt::block_on(concurrent_client
-                .update::<Ordered>(
-                    Arc::from(req)
-                ))
+            sem.acquire();
+
+            let sem_clone = sem.clone();
+
+            concurrent_client
+                .update_callback::<Ordered>(
+                    Arc::from(req),
+                    Box::new(move |_rep| {
+                        sem_clone.release();
+                    }),
+                )
                 .expect("error");
         } else {
             println!("No key with idx {:?}", i * n_clients + id as usize);
@@ -514,10 +521,17 @@ fn run_client(client: SMRClient, generator: Arc<Generator>, n_clients: usize) {
 
                 let ser_map = bincode::serialize(&map).expect("failed to serialize map");
                 let req = Action::Insert(key.as_bytes().to_vec(), ser_map);
-                rt::block_on(concurrent_client
-                    .update::<Ordered>(
-                        Arc::from(req)
-                    ))
+                sem.acquire();
+
+                let sem_clone = sem.clone();
+
+                concurrent_client
+                    .update_callback::<Ordered>(
+                        Arc::from(req),
+                        Box::new(move |_rep| {
+                            sem_clone.release();
+                        }),
+                    )
                     .expect("error");
             } else {
                 println!("No key with idx {:?}", rounds * n_clients + i as usize);
@@ -565,7 +579,7 @@ fn run_client(client: SMRClient, generator: Arc<Generator>, n_clients: usize) {
             .update_callback::<Ordered>(
                 Arc::from(req),
                 Box::new(move |_rep| {
-                    println!("Update {:?}",&key);
+                    println!("Update {:?}", &key);
 
                     sem_clone.release();
                 }),
