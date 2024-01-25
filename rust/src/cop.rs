@@ -1,42 +1,42 @@
 use std::env;
 use std::env::args;
 use std::hash::Hasher;
-use std::sync::Arc;
 use std::sync::atomic::AtomicBool;
 use std::sync::atomic::Ordering::Relaxed;
+use std::sync::Arc;
 
 use anyhow::Context;
 use atlas_common::collections::HashMap;
 use atlas_common::error::*;
 use intmap::IntMap;
 use konst::primitive::parse_usize;
-use log4rs::append::Append;
+use log::LevelFilter;
 use log4rs::append::console::ConsoleAppender;
-use log4rs::append::rolling_file::policy::compound::CompoundPolicy;
 use log4rs::append::rolling_file::policy::compound::roll::fixed_window::FixedWindowRoller;
 use log4rs::append::rolling_file::policy::compound::trigger::Trigger;
+use log4rs::append::rolling_file::policy::compound::CompoundPolicy;
 use log4rs::append::rolling_file::{LogFile, RollingFileAppender};
-use log4rs::Config;
+use log4rs::append::Append;
 use log4rs::config::{Appender, Logger, Root};
 use log4rs::encode::pattern::PatternEncoder;
 use log4rs::filter::threshold::ThresholdFilter;
-use log::LevelFilter;
+use log4rs::Config;
 use rand::Rng;
 
 use atlas_client::client::ordered_client::Ordered;
 use atlas_client::concurrent_client::ConcurrentClient;
-use atlas_common::{async_runtime as rt, channel, init, InitConfig};
 use atlas_common::crypto::signature::{KeyPair, PublicKey};
 use atlas_common::node_id::NodeId;
 use atlas_common::peer_addr::PeerAddr;
-use atlas_metrics::{MetricLevel, with_metric_level, with_metrics};
+use atlas_common::{async_runtime as rt, channel, init, InitConfig};
+use atlas_metrics::{with_metric_level, with_metrics, MetricLevel};
 use rand_core::SeedableRng;
 use rand_distr::Standard;
 use rand_xoshiro::SplitMix64;
 use semaphores::RawSemaphore;
 
 use crate::common::*;
-use crate::generator::{generate_kv_pairs, Operation, Generator, generate_key_pool, NUM_KEYS};
+use crate::generator::{generate_key_pool, generate_kv_pairs, Generator, Operation, NUM_KEYS};
 use crate::serialize::Action;
 
 #[derive(Debug)]
@@ -53,7 +53,10 @@ impl Trigger for InitTrigger {
             return Ok(false);
         }
 
-        Ok(self.has_been_triggered.compare_exchange(false, true, Relaxed, Relaxed).is_ok())
+        Ok(self
+            .has_been_triggered
+            .compare_exchange(false, true, Relaxed, Relaxed)
+            .is_ok())
     }
 }
 
@@ -66,26 +69,35 @@ fn format_log(id: u32, str: &str) -> String {
 }
 
 fn policy(id: u32, str: &str) -> CompoundPolicy {
-    let trigger = InitTrigger { has_been_triggered: AtomicBool::new(false) };
+    let trigger = InitTrigger {
+        has_been_triggered: AtomicBool::new(false),
+    };
 
-    let roller = FixedWindowRoller::builder().base(1).build(format_old_log(id, str).as_str(), 5).context("MsgLog Error")
-    .unwrap();
+    let roller = FixedWindowRoller::builder()
+        .base(1)
+        .build(format_old_log(id, str).as_str(), 5)
+        .context("MsgLog Error")
+        .unwrap();
 
     CompoundPolicy::new(Box::new(trigger), Box::new(roller))
 }
 
 fn file_appender(id: u32, str: &str) -> Box<dyn Append> {
-    Box::new(RollingFileAppender::builder()
-        .encoder(Box::new(PatternEncoder::new("{l} {d} - {m}{n}")))
-        .build(format_log(id, str).as_str(), Box::new(policy(id, str)))
-        .context("Failed to create rolling file appender").unwrap())
+    Box::new(
+        RollingFileAppender::builder()
+            .encoder(Box::new(PatternEncoder::new("{l} {d} - {m}{n}")))
+            .build(format_log(id, str).as_str(), Box::new(policy(id, str)))
+            .context("Failed to create rolling file appender")
+            .unwrap(),
+    )
 }
 
 fn generate_log(id: u32) {
     let console_appender = ConsoleAppender::builder()
-        .encoder(Box::new(PatternEncoder::new("{l} {d} - {m}{n}"))).build();
+        .encoder(Box::new(PatternEncoder::new("{l} {d} - {m}{n}")))
+        .build();
 
-        let config = Config::builder()
+    let config = Config::builder()
         .appender(Appender::builder().build("comm", file_appender(id, "_comm")))
         .appender(Appender::builder().build("reconfig", file_appender(id, "_reconfig")))
         .appender(Appender::builder().build("common", file_appender(id, "_common")))
@@ -95,23 +107,66 @@ fn generate_log(id: u32) {
         .appender(Appender::builder().build("state_transfer", file_appender(id, "_state_transfer")))
         .appender(Appender::builder().build("decision_log", file_appender(id, "_decision_log")))
         .appender(Appender::builder().build("replica", file_appender(id, "_replica")))
-        .appender(Appender::builder().filter(Box::new(ThresholdFilter::new(LevelFilter::Warn))).build("console", Box::new(console_appender)))
+        .appender(
+            Appender::builder()
+                .filter(Box::new(ThresholdFilter::new(LevelFilter::Warn)))
+                .build("console", Box::new(console_appender)),
+        )
+        .logger(
+            Logger::builder()
+                .appender("comm")
+                .build("atlas_communication", LevelFilter::Debug),
+        )
+        .logger(
+            Logger::builder()
+                .appender("common")
+                .build("atlas_common", LevelFilter::Debug),
+        )
+        .logger(
+            Logger::builder()
+                .appender("reconfig")
+                .build("atlas_reconfiguration", LevelFilter::Debug),
+        )
+        .logger(
+            Logger::builder()
+                .appender("log_transfer")
+                .build("atlas_log_transfer", LevelFilter::Debug),
+        )
+        .logger(
+            Logger::builder()
+                .appender("decision_log")
+                .build("atlas_decision_log", LevelFilter::Debug),
+        )
+        .logger(
+            Logger::builder()
+                .appender("replica")
+                .build("atlas_smr_replica", LevelFilter::Debug),
+        )
+        .logger(
+            Logger::builder()
+                .appender("consensus")
+                .build("febft_pbft_consensus", LevelFilter::Debug),
+        )
+        .logger(
+            Logger::builder()
+                .appender("state_transfer")
+                .build("febft_state_transfer", LevelFilter::Debug),
+        )
+        .logger(
+            Logger::builder()
+                .appender("state_transfer")
+                .build("progressive_state_transfer", LevelFilter::Debug),
+        )
+        .logger(
+            Logger::builder()
+                .appender("state_transfer")
+                .build("atlas_divisible_state", LevelFilter::Debug),
+        )
+        .build(Root::builder().appender("file").build(LevelFilter::Debug))
+        .context("MsgLog Error")
+        .unwrap();
 
-        .logger(Logger::builder().appender("comm").build("atlas_communication", LevelFilter::Debug))
-        .logger(Logger::builder().appender("common").build("atlas_common", LevelFilter::Debug))
-        .logger(Logger::builder().appender("reconfig").build("atlas_reconfiguration", LevelFilter::Debug))
-        .logger(Logger::builder().appender("log_transfer").build("atlas_log_transfer", LevelFilter::Debug))
-        .logger(Logger::builder().appender("decision_log").build("atlas_decision_log", LevelFilter::Debug))
-        .logger(Logger::builder().appender("replica").build("atlas_smr_replica", LevelFilter::Debug))
-        .logger(Logger::builder().appender("consensus").build("febft_pbft_consensus", LevelFilter::Debug))
-        .logger(Logger::builder().appender("state_transfer").build("febft_state_transfer", LevelFilter::Debug))
-        .logger(Logger::builder().appender("state_transfer").build("progressive_state_transfer", LevelFilter::Debug))
-        .logger(Logger::builder().appender("state_transfer").build("atlas_divisible_state", LevelFilter::Debug))
-
-        .build(Root::builder().appender("file").build(LevelFilter::Debug), ).context("MsgLog Error").unwrap();
-
-
-        let _handle = log4rs::init_config(config).context("MsgLog Error").unwrap();
+    let _handle = log4rs::init_config(config).context("MsgLog Error").unwrap();
 }
 
 pub fn main() {
@@ -212,10 +267,12 @@ fn main_(id: NodeId) {
             .take(clients_config.len())
             .enumerate()
             .map(|(id, sk)| (u64::from(first_cli) + id as u64, sk))
-            .chain(sk_stream()
-                .take(replicas_config.len())
-                .enumerate()
-                .map(|(id, sk)| (id as u64, sk)))
+            .chain(
+                sk_stream()
+                    .take(replicas_config.len())
+                    .enumerate()
+                    .map(|(id, sk)| (id as u64, sk)),
+            )
             .collect();
 
         let public_keys: IntMap<PublicKey> = secret_keys
@@ -253,8 +310,8 @@ fn main_(id: NodeId) {
         };
 
         /* let comm_stats = Some(Arc::new(CommStats::new(id,
-                                                 first_cli,
-                                                 MicrobenchmarkData::MEASUREMENT_INTERVAL))); */
+        first_cli,
+        MicrobenchmarkData::MEASUREMENT_INTERVAL))); */
 
         let comm_stats = None;
 
@@ -293,10 +350,15 @@ fn client_async_main() {
 
     println!("arg_vec: {:?}", arg_vec);
 
-    let mut first_id: u32 = env::var("ID").unwrap_or(String::from("1000")).parse().unwrap();
+    let mut first_id: u32 = env::var("ID")
+        .unwrap_or(String::from("1000"))
+        .parse()
+        .unwrap();
 
-    let client_count: u32 = env::var("NUM_CLIENTS").unwrap_or(String::from("1")).parse().unwrap();
-
+    let client_count: u32 = env::var("NUM_CLIENTS")
+        .unwrap_or(String::from("1"))
+        .parse()
+        .unwrap();
 
     //let client_count: u32 = env::var("NUM_CLIENTS").unwrap_or(String::from("1")).parse().unwrap();
 
@@ -304,10 +366,12 @@ fn client_async_main() {
         .take(clients_config.len())
         .enumerate()
         .map(|(id, sk)| (first_id as u64 + id as u64, sk))
-        .chain(sk_stream()
-            .take(replicas_config.len())
-            .enumerate()
-            .map(|(id, sk)| (id as u64, sk)))
+        .chain(
+            sk_stream()
+                .take(replicas_config.len())
+                .enumerate()
+                .map(|(id, sk)| (id as u64, sk)),
+        )
         .collect();
     let public_keys: IntMap<PublicKey> = secret_keys
         .iter()
@@ -380,7 +444,6 @@ fn client_async_main() {
         clients.push(rt::block_on(rx.recv()).unwrap());
     }
 
-
     let mut handles = Vec::with_capacity(client_count as usize);
     let keypool = generate_key_pool(NUM_KEYS);
     let generator = Arc::new(Generator::new(keypool, NUM_KEYS.try_into().unwrap()));
@@ -392,7 +455,7 @@ fn client_async_main() {
         let cli_len = client_count as usize;
         let h = std::thread::Builder::new()
             .name(format!("Client {:?}", client.id()))
-            .spawn(move || { run_client(client, gen,cli_len) })
+            .spawn(move || run_client(client, gen, cli_len))
             .expect(format!("Failed to start thread for client {:?} ", &id.id()).as_str());
 
         handles.push(h);
@@ -407,7 +470,7 @@ fn client_async_main() {
     }
 }
 
-fn sk_stream() -> impl Iterator<Item=KeyPair> {
+fn sk_stream() -> impl Iterator<Item = KeyPair> {
     std::iter::repeat_with(|| {
         // only valid for ed25519!
         let buf = [0; 32];
@@ -417,57 +480,68 @@ fn sk_stream() -> impl Iterator<Item=KeyPair> {
 
 fn run_client(client: SMRClient, generator: Arc<Generator>, n_clients: usize) {
     let id = client.id().0.clone();
-    let concurrent_requests= get_concurrent_rqs();
+    let concurrent_requests = get_concurrent_rqs();
     let concurrent_client = ConcurrentClient::from_client(client, concurrent_requests).unwrap();
     let sem = Arc::new(RawSemaphore::new(concurrent_requests));
 
-    let mut rand = SplitMix64::seed_from_u64((6453 + (id*1242)).into());
-    let rounds = NUM_KEYS/n_clients;
-    let rem = NUM_KEYS%n_clients;
+    let mut rand = SplitMix64::seed_from_u64((6453 + (id * 1242)).into());
+    let rounds = NUM_KEYS / n_clients;
+    let rem = NUM_KEYS % n_clients;
     //loading phase first
-    println!("client {:?} loading {:?} rounds with {:?} remainder",id, rounds, rem);
+    println!(
+        "client {:?} loading {:?} rounds with {:?} remainder",
+        id, rounds, rem
+    );
     for i in 0..rounds {
+        if let Some(key) = generator.get(i * n_clients + id as usize) {
+            let map = generate_kv_pairs(&mut rand);
+            let ser_map = bincode::serialize(&map).expect("failed to serialize map");
+            let req = Action::Insert(key.as_bytes().to_vec(), ser_map);
+            sem.acquire();
 
+            let sem_clone = sem.clone();
 
-        if let Some(key) = generator.get(i*n_clients + id as usize) {
-        let map = generate_kv_pairs(&mut rand);
-        let ser_map = bincode::serialize(&map).expect("failed to serialize map");
-        let req = Action::Insert(key.as_bytes().to_vec(),ser_map);
-        sem.acquire();
-
-        let sem_clone =  sem.clone();
-
-        concurrent_client.update_callback::<Ordered>(Arc::from(req), Box::new(move |_rep| {
-            sem_clone.release();
-        })).expect("error");
+            concurrent_client
+                .update_callback::<Ordered>(
+                    Arc::from(req),
+                    Box::new(move |_rep| {
+                        sem_clone.release();
+                    }),
+                )
+                .expect("error");
         } else {
-            println!("No key with idx {:?}", i+id as usize);
+            println!("No key with idx {:?}", i + id as usize);
         }
     }
 
     if id == 1 {
-        for i in 0..rem {   
-        if let Some(key) = generator.get(rounds*n_clients + i as usize) {
-            let map = generate_kv_pairs(&mut rand);
-                
-            let ser_map = bincode::serialize(&map).expect("failed to serialize map");
-            let req = Action::Insert(key.as_bytes().to_vec(),ser_map);
-            sem.acquire();
-    
-            let sem_clone =  sem.clone();
-    
-            concurrent_client.update_callback::<Ordered>(Arc::from(req), Box::new(move |_rep| {
-                sem_clone.release();
-            })).expect("error");
+        for i in 0..rem {
+            if let Some(key) = generator.get(rounds * n_clients + i as usize) {
+                let map = generate_kv_pairs(&mut rand);
+
+                let ser_map = bincode::serialize(&map).expect("failed to serialize map");
+                let req = Action::Insert(key.as_bytes().to_vec(), ser_map);
+                sem.acquire();
+
+                let sem_clone = sem.clone();
+
+                concurrent_client
+                    .update_callback::<Ordered>(
+                        Arc::from(req),
+                        Box::new(move |_rep| {
+                            sem_clone.release();
+                        }),
+                    )
+                    .expect("error");
             } else {
-                println!("No key with idx {:?}", i+id as usize);
+                println!("No key with idx {:?}", i + id as usize);
             }
         }
     }
 
     for _ in 0..10000000 as u64 {
         let key = generator.get_key_zipf(&mut rand);
-     /*    let request = match &op {
+        /*    let request = match &op {
             Operation::Read => {
               //  println!("Read {:?}",&ser_key);
                 Action::Read(ser_key)
@@ -478,7 +552,7 @@ fn run_client(client: SMRClient, generator: Arc<Generator>, n_clients: usize) {
                 let ser_map = bincode::serialize(&map).expect("failed to serialize map");
                 Action::Insert(ser_key,ser_map)
             },
-            Operation::Remove =>{ 
+            Operation::Remove =>{
                 //println!("Remove {:?}",&ser_key);
 
                 Action::Remove(ser_key)
@@ -496,14 +570,19 @@ fn run_client(client: SMRClient, generator: Arc<Generator>, n_clients: usize) {
         let map = generate_kv_pairs(&mut rand);
 
         let ser_map = bincode::serialize(&map).expect("failed to serialize map");
-        let req = Action::Insert(key.as_bytes().to_vec(),ser_map);
+        let req = Action::Insert(key.as_bytes().to_vec(), ser_map);
         sem.acquire();
 
-        let sem_clone =  sem.clone();
+        let sem_clone = sem.clone();
 
-        concurrent_client.update_callback::<Ordered>(Arc::from(req), Box::new(move |_rep| {
-            sem_clone.release();
-        })).expect("error");
+        concurrent_client
+            .update_callback::<Ordered>(
+                Arc::from(req),
+                Box::new(move |_rep| {
+                    sem_clone.release();
+                }),
+            )
+            .expect("error");
         /*let _ = match rt::block_on(concurrent_client.update::<Ordered>(Arc::from(request)).expect("error").as_ref() {
             crate::serialize::Reply::None => None,
             crate::serialize::Reply::Single(bytes) =>{
@@ -514,5 +593,4 @@ fn run_client(client: SMRClient, generator: Arc<Generator>, n_clients: usize) {
 
         //println!("Reply: {:?}", &res);
     }
-    
 }
