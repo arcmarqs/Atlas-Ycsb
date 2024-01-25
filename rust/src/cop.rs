@@ -455,7 +455,7 @@ fn run_client(client: SMRClient, generator: Arc<Generator>, n_clients: usize) {
         ser_key.extend(key.as_bytes().iter());
         let op: Operation = rand.sample(Standard);
 
-        let request = match &op {
+     /*    let request = match &op {
             Operation::Read => {
               //  println!("Read {:?}",&ser_key);
                 Action::Read(ser_key)
@@ -480,16 +480,21 @@ fn run_client(client: SMRClient, generator: Arc<Generator>, n_clients: usize) {
                 let ser_map = bincode::serialize(&map).expect("failed to serialize map");
                 Action::Insert(ser_key,ser_map)
             },
-        };
+        };*/
 
+        let request = {let map = generate_kv_pairs(&mut rand);
+            println!("Update {:?}",&key);
 
-        let _ = match rt::block_on(concurrent_client.update::<Ordered>(Arc::from(request))).expect("error").as_ref() {
+            let ser_map = bincode::serialize(&map).expect("failed to serialize map");
+            Action::Insert(ser_key,ser_map)};
+        let _ = concurrent_client.update::<Ordered>(Arc::from(request));
+        /*let _ = match rt::block_on(concurrent_client.update::<Ordered>(Arc::from(request)).expect("error").as_ref() {
             crate::serialize::Reply::None => None,
             crate::serialize::Reply::Single(bytes) =>{
             let map: HashMap<String,String> = bincode::deserialize(&bytes).expect("failed to deserialize reply");
             Some(map)
             },
-        };
+        };*/
 
         //println!("Reply: {:?}", &res);
     }
