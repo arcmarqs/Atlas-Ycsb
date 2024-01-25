@@ -503,7 +503,7 @@ fn run_client(client: SMRClient, generator: Arc<Generator>, n_clients: usize) {
                 ))
                 .expect("error");
         } else {
-            println!("No key with idx {:?} while loading", i + id as usize);
+            println!("No key with idx {:?}", i * n_clients + id as usize);
         }
     }
 
@@ -520,7 +520,7 @@ fn run_client(client: SMRClient, generator: Arc<Generator>, n_clients: usize) {
                     ))
                     .expect("error");
             } else {
-                println!("No key with idx {:?}", i + id as usize);
+                println!("No key with idx {:?}", rounds * n_clients + i as usize);
             }
         }
     }
