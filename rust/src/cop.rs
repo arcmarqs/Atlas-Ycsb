@@ -162,7 +162,7 @@ fn generate_log(id: u32) {
                 .appender("state_transfer")
                 .build("atlas_divisible_state", LevelFilter::Debug),
         )
-        .build(Root::builder().appender("file").build(LevelFilter::Debug))
+        .build(Root::builder().appender("file").build(LevelFilter::Warn))
         .context("MsgLog Error")
         .unwrap();
 
