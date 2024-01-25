@@ -492,7 +492,7 @@ fn run_client(client: SMRClient, generator: Arc<Generator>, n_clients: usize) {
         "client {:?} loading {:?} rounds with {:?} remainder",
         id, rounds, rem
     );
-    for i in 0..rounds-1 {
+    for i in 0..rounds {
         if let Some(key) = generator.get(i * n_clients + id as usize) {
             let map = generate_kv_pairs(&mut rand);
             let ser_map = bincode::serialize(&map).expect("failed to serialize map");
@@ -565,6 +565,8 @@ fn run_client(client: SMRClient, generator: Arc<Generator>, n_clients: usize) {
             .update_callback::<Ordered>(
                 Arc::from(req),
                 Box::new(move |_rep| {
+                    println!("Update {:?}",&key);
+
                     sem_clone.release();
                 }),
             )
