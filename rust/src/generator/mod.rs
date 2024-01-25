@@ -9,7 +9,7 @@ use sharded_slab::Pool;
 
 const PRIMARY_KEY_LEN: usize = 32;
 const SECONDARY_KEY_LEN: usize = 16;
-const VALUE_LEN: usize = 82;
+const VALUE_LEN: usize = 64;
 const HASHMAP_LEN: usize = 10;
 
 // for more "randomness" in the distribution this should be between  ]0.0,0.24[
