@@ -1,7 +1,7 @@
 use std::env;
 use std::sync::atomic::AtomicBool;
-use std::sync::{Arc, Barrier};
 use std::sync::atomic::Ordering::Relaxed;
+use std::sync::{Arc, Barrier};
 
 use anyhow::Context;
 use atlas_client::concurrent_client::ConcurrentClient;
@@ -16,27 +16,28 @@ use atlas_common::crypto::signature::{KeyPair, PublicKey};
 use atlas_common::error::*;
 use atlas_common::node_id::NodeId;
 use atlas_common::{async_runtime as rt, channel, init, InitConfig};
-use atlas_metrics::{MetricLevel, with_metric_level, with_metrics};
-use progressive_state_transfer;
+use atlas_metrics::{with_metric_level, with_metrics, MetricLevel};
+use konst::primitive::parse_usize;
 use log::LevelFilter;
 use log4rs::append::console::ConsoleAppender;
-use konst::primitive::parse_usize;
 use log4rs::append::rolling_file::policy::compound::roll::fixed_window::FixedWindowRoller;
 use log4rs::append::rolling_file::policy::compound::trigger::Trigger;
 use log4rs::append::rolling_file::policy::compound::CompoundPolicy;
 use log4rs::append::rolling_file::{LogFile, RollingFileAppender};
 use log4rs::append::Append;
-use log4rs::filter::threshold::ThresholdFilter;
 use log4rs::config::{Appender, Logger, Root};
 use log4rs::encode::pattern::PatternEncoder;
+use log4rs::filter::threshold::ThresholdFilter;
 use log4rs::Config;
+use progressive_state_transfer;
 use rand::Rng;
 use rand_core::SeedableRng;
 use rand_distr::Standard;
 use rand_xoshiro::SplitMix64;
+use semaphores::RawSemaphore;
 
 use crate::common::*;
-use crate::generator::{Generator, Operation, generate_kv_pairs, generate_key_pool, NUM_KEYS};
+use crate::generator::{generate_key_pool, generate_kv_pairs, Generator, Operation, NUM_KEYS};
 use crate::serialize::Action;
 
 #[derive(Debug)]
@@ -94,9 +95,10 @@ fn file_appender(id: u32, str: &str) -> Box<dyn Append> {
 
 fn generate_log(id: u32) {
     let console_appender = ConsoleAppender::builder()
-        .encoder(Box::new(PatternEncoder::new("{l} {d} - {m}{n}"))).build();
+        .encoder(Box::new(PatternEncoder::new("{l} {d} - {m}{n}")))
+        .build();
 
-        let config = Config::builder()
+    let config = Config::builder()
         .appender(Appender::builder().build("comm", file_appender(id, "_comm")))
         .appender(Appender::builder().build("reconfig", file_appender(id, "_reconfig")))
         .appender(Appender::builder().build("common", file_appender(id, "_common")))
@@ -106,23 +108,66 @@ fn generate_log(id: u32) {
         .appender(Appender::builder().build("state_transfer", file_appender(id, "_state_transfer")))
         .appender(Appender::builder().build("decision_log", file_appender(id, "_decision_log")))
         .appender(Appender::builder().build("replica", file_appender(id, "_replica")))
-        .appender(Appender::builder().filter(Box::new(ThresholdFilter::new(LevelFilter::Warn))).build("console", Box::new(console_appender)))
+        .appender(
+            Appender::builder()
+                .filter(Box::new(ThresholdFilter::new(LevelFilter::Warn)))
+                .build("console", Box::new(console_appender)),
+        )
+        .logger(
+            Logger::builder()
+                .appender("comm")
+                .build("atlas_communication", LevelFilter::Debug),
+        )
+        .logger(
+            Logger::builder()
+                .appender("common")
+                .build("atlas_common", LevelFilter::Debug),
+        )
+        .logger(
+            Logger::builder()
+                .appender("reconfig")
+                .build("atlas_reconfiguration", LevelFilter::Debug),
+        )
+        .logger(
+            Logger::builder()
+                .appender("log_transfer")
+                .build("atlas_log_transfer", LevelFilter::Debug),
+        )
+        .logger(
+            Logger::builder()
+                .appender("decision_log")
+                .build("atlas_decision_log", LevelFilter::Debug),
+        )
+        .logger(
+            Logger::builder()
+                .appender("replica")
+                .build("atlas_smr_replica", LevelFilter::Debug),
+        )
+        .logger(
+            Logger::builder()
+                .appender("consensus")
+                .build("febft_pbft_consensus", LevelFilter::Debug),
+        )
+        .logger(
+            Logger::builder()
+                .appender("state_transfer")
+                .build("febft_state_transfer", LevelFilter::Debug),
+        )
+        .logger(
+            Logger::builder()
+                .appender("state_transfer")
+                .build("progressive_state_transfer", LevelFilter::Debug),
+        )
+        .logger(
+            Logger::builder()
+                .appender("state_transfer")
+                .build("atlas_divisible_state", LevelFilter::Debug),
+        )
+        .build(Root::builder().appender("file").build(LevelFilter::Debug))
+        .context("MsgLog Error")
+        .unwrap();
 
-        .logger(Logger::builder().appender("comm").build("atlas_communication", LevelFilter::Debug))
-        .logger(Logger::builder().appender("common").build("atlas_common", LevelFilter::Debug))
-        .logger(Logger::builder().appender("reconfig").build("atlas_reconfiguration", LevelFilter::Debug))
-        .logger(Logger::builder().appender("log_transfer").build("atlas_log_transfer", LevelFilter::Debug))
-        .logger(Logger::builder().appender("decision_log").build("atlas_decision_log", LevelFilter::Debug))
-        .logger(Logger::builder().appender("replica").build("atlas_smr_replica", LevelFilter::Debug))
-        .logger(Logger::builder().appender("consensus").build("febft_pbft_consensus", LevelFilter::Debug))
-        .logger(Logger::builder().appender("state_transfer").build("febft_state_transfer", LevelFilter::Debug))
-        .logger(Logger::builder().appender("state_transfer").build("progressive_state_transfer", LevelFilter::Debug))
-        .logger(Logger::builder().appender("state_transfer").build("atlas_divisible_state", LevelFilter::Debug))
-
-        .build(Root::builder().appender("file").build(LevelFilter::Debug), ).context("MsgLog Error").unwrap();
-
-
-        let _handle = log4rs::init_config(config).context("MsgLog Error").unwrap();
+    let _handle = log4rs::init_config(config).context("MsgLog Error").unwrap();
 }
 
 pub fn main() {
@@ -132,55 +177,67 @@ pub fn main() {
         .map(|x| x == "1")
         .unwrap_or(false);
 
-    let threadpool_threads = parse_usize(std::env::var("THREADPOOL_THREADS")
-        .unwrap_or(String::from("2")).as_str()).unwrap();
-    let async_threads = parse_usize(std::env::var("ASYNC_THREADS")
-        .unwrap_or(String::from("2")).as_str()).unwrap();
+    let threadpool_threads = parse_usize(
+        std::env::var("THREADPOOL_THREADS")
+            .unwrap_or(String::from("2"))
+            .as_str(),
+    )
+    .unwrap();
+    let async_threads = parse_usize(
+        std::env::var("ASYNC_THREADS")
+            .unwrap_or(String::from("2"))
+            .as_str(),
+    )
+    .unwrap();
 
     let id: u32 = std::env::var("ID")
-    .iter()
-    .flat_map(|id| id.parse())
-    .next()
-    .unwrap();
+        .iter()
+        .flat_map(|id| id.parse())
+        .next()
+        .unwrap();
 
     println!("Starting...");
 
     if !is_client {
-            let id: u32 = std::env::var("ID")
-                .iter()
-                .flat_map(|id| id.parse())
-                .next()
-                .unwrap();
-    
-            generate_log(id);
-    
-            let conf = InitConfig {
-                //If we are the client, we want to have many threads to send stuff to replicas
-                threadpool_threads,
-                async_threads,
-                //If we are the client, we don't want any threads to send to other clients as that will never happen
-                id: Some(id.to_string()),
-            };
-    
-            let _guard = unsafe { init(conf).unwrap() };
-            let node_id = NodeId::from(id);
+        let id: u32 = std::env::var("ID")
+            .iter()
+            .flat_map(|id| id.parse())
+            .next()
+            .unwrap();
 
-            atlas_metrics::initialize_metrics(vec![with_metrics(febft_pbft_consensus::bft::metric::metrics()),
-            with_metrics(atlas_core::metric::metrics()),
-            with_metrics(atlas_communication::metric::metrics()),
-            with_metrics(atlas_smr_replica::metric::metrics()),
-            with_metrics(atlas_log_transfer::metrics::metrics()),
-            with_metrics(atlas_view_transfer::metrics::metrics()),
-            with_metrics(atlas_divisible_state::metrics::metrics()),
-            with_metrics(progressive_state_transfer::stp::metrics::metrics()),
-            with_metric_level(MetricLevel::Info)],
-       influx_db_config(node_id));
+        generate_log(id);
 
-            if !single_server {
+        let conf = InitConfig {
+            //If we are the client, we want to have many threads to send stuff to replicas
+            threadpool_threads,
+            async_threads,
+            //If we are the client, we don't want any threads to send to other clients as that will never happen
+            id: Some(id.to_string()),
+        };
+
+        let _guard = unsafe { init(conf).unwrap() };
+        let node_id = NodeId::from(id);
+
+        atlas_metrics::initialize_metrics(
+            vec![
+                with_metrics(febft_pbft_consensus::bft::metric::metrics()),
+                with_metrics(atlas_core::metric::metrics()),
+                with_metrics(atlas_communication::metric::metrics()),
+                with_metrics(atlas_smr_replica::metric::metrics()),
+                with_metrics(atlas_log_transfer::metrics::metrics()),
+                with_metrics(atlas_view_transfer::metrics::metrics()),
+                with_metrics(atlas_divisible_state::metrics::metrics()),
+                with_metrics(progressive_state_transfer::stp::metrics::metrics()),
+                with_metric_level(MetricLevel::Info),
+            ],
+            influx_db_config(node_id),
+        );
+
+        if !single_server {
             main_();
-            } else {
+        } else {
             run_single_server(node_id);
-            }
+        }
     } else {
         let conf = InitConfig {
             //If we are the client, we want to have many threads to send stuff to replicas
@@ -192,13 +249,19 @@ pub fn main() {
 
         let _guard = unsafe { init(conf).unwrap() };
 
-        let mut first_id: u32 = env::var("ID").unwrap_or(String::from("1000")).parse().unwrap();
+        let mut first_id: u32 = env::var("ID")
+            .unwrap_or(String::from("1000"))
+            .parse()
+            .unwrap();
 
-      
-        atlas_metrics::initialize_metrics(vec![with_metrics(atlas_communication::metric::metrics()),
-        with_metrics(atlas_client::metric::metrics()),
-        with_metric_level(MetricLevel::Info)],
-        influx_db_config(NodeId::from(first_id)));
+        atlas_metrics::initialize_metrics(
+            vec![
+                with_metrics(atlas_communication::metric::metrics()),
+                with_metrics(atlas_client::metric::metrics()),
+                with_metric_level(MetricLevel::Info),
+            ],
+            influx_db_config(NodeId::from(first_id)),
+        );
 
         client_async_main();
     }
@@ -356,7 +419,6 @@ fn run_single_server(id: NodeId) {
             let id = NodeId::from(client.id);
             let addr = format!("{}:{}", client.ipaddr, client.portno);
 
-            
             let (socket, host) = crate::addr!(&client.hostname => addr);
             let client_addr = PeerAddr::new(socket, host);
 
@@ -396,18 +458,26 @@ fn client_async_main() {
     let clients_config = parse_config("./config/clients.config").unwrap();
     let replicas_config = parse_config("./config/replicas.config").unwrap();
 
-    let mut first_id: u32 = env::var("ID").unwrap_or(String::from("1000")).parse().unwrap();
+    let mut first_id: u32 = env::var("ID")
+        .unwrap_or(String::from("1000"))
+        .parse()
+        .unwrap();
 
-    let client_count: u32 = env::var("NUM_CLIENTS").unwrap_or(String::from("1")).parse().unwrap();
+    let client_count: u32 = env::var("NUM_CLIENTS")
+        .unwrap_or(String::from("1"))
+        .parse()
+        .unwrap();
 
     let mut secret_keys: IntMap<KeyPair> = sk_stream()
         .take(clients_config.len())
         .enumerate()
         .map(|(id, sk)| (first_id as u64 + id as u64, sk))
-        .chain(sk_stream()
-            .take(replicas_config.len())
-            .enumerate()
-            .map(|(id, sk)| (id as u64, sk)))
+        .chain(
+            sk_stream()
+                .take(replicas_config.len())
+                .enumerate()
+                .map(|(id, sk)| (id as u64, sk)),
+        )
         .collect();
     let public_keys: IntMap<PublicKey> = secret_keys
         .iter()
@@ -446,7 +516,6 @@ fn client_async_main() {
             addrs
         };
 
-
         let sk = secret_keys.remove(id.into()).unwrap();
 
         let fut = setup_client(
@@ -455,7 +524,7 @@ fn client_async_main() {
             sk,
             addrs,
             public_keys.clone(),
-            None
+            None,
         );
 
         let mut tx = tx.clone();
@@ -486,12 +555,12 @@ fn client_async_main() {
     for client in clients {
         let id = client.id();
         let gen = generator.clone();
-       // generate_log(id.0);
-       let cli_len = client_count as usize;
+        // generate_log(id.0);
+        let cli_len = client_count as usize;
 
         let h = std::thread::Builder::new()
             .name(format!("Client {:?}", client.id()))
-            .spawn(move || { run_client(client, gen,cli_len) })
+            .spawn(move || run_client(client, gen, cli_len))
             .expect(format!("Failed to start thread for client {:?} ", &id.id()).as_str());
 
         handles.push(h);
@@ -516,31 +585,20 @@ fn sk_stream() -> impl Iterator<Item = KeyPair> {
 
 fn run_client(client: SMRClient, generator: Arc<Generator>, n_clients: usize) {
     let id = client.id().0.clone();
-    println!("run client");
-    let concurrent_client = ConcurrentClient::from_client(client, get_concurrent_rqs()).unwrap();
-    let mut rand = SplitMix64::seed_from_u64((6453 + (id*1242)).into());
-    let rounds = NUM_KEYS/n_clients;
-    let rem = NUM_KEYS%n_clients;
+    let concurrent_requests = get_concurrent_rqs();
+    let concurrent_client = ConcurrentClient::from_client(client, concurrent_requests).unwrap();
+  //  let sem = Arc::new(RawSemaphore::new(concurrent_requests));
+
+    let mut rand = SplitMix64::seed_from_u64((6453 + (id * 1242)).into());
+    //let rounds = NUM_KEYS / n_clients;
+   // let rem = NUM_KEYS % n_clients;
     //loading phase first
-    println!(" number of loading rounds {:?} with remainder {:?}", rounds, rem);
-    for i in 0..rounds {
+    /* println!(" number of loading rounds {:?} with remainder {:?}", rounds, rem);
+        for i in 0..rounds {
 
-        if let Some(key) = generator.get(i*n_clients + id as usize) {
-        let map = generate_kv_pairs(&mut rand);
-            
-        let ser_map = bincode::serialize(&map).expect("failed to serialize map");
-        let req = Action::Insert(key.as_bytes().to_vec(),ser_map);
-        let _res = rt::block_on(concurrent_client.update::<Ordered>(Arc::from(req))).expect("error");
-        } else {
-            println!("No key with idx {:?}", i+id as usize);
-        }
-    }
-
-    if id == 1 {
-        for i in 0..rem {   
-        if let Some(key) = generator.get(rounds*n_clients + i as usize) {
+            if let Some(key) = generator.get(i*n_clients + id as usize) {
             let map = generate_kv_pairs(&mut rand);
-                
+
             let ser_map = bincode::serialize(&map).expect("failed to serialize map");
             let req = Action::Insert(key.as_bytes().to_vec(),ser_map);
             let _res = rt::block_on(concurrent_client.update::<Ordered>(Arc::from(req))).expect("error");
@@ -548,52 +606,28 @@ fn run_client(client: SMRClient, generator: Arc<Generator>, n_clients: usize) {
                 println!("No key with idx {:?}", i+id as usize);
             }
         }
-    }
 
+        if id == 1 {
+            for i in 0..rem {
+            if let Some(key) = generator.get(rounds*n_clients + i as usize) {
+                let map = generate_kv_pairs(&mut rand);
 
+                let ser_map = bincode::serialize(&map).expect("failed to serialize map");
+                let req = Action::Insert(key.as_bytes().to_vec(),ser_map);
+                let _res = rt::block_on(concurrent_client.update::<Ordered>(Arc::from(req))).expect("error");
+                } else {
+                    println!("No key with idx {:?}", i+id as usize);
+                }
+            }
+        }
+    */
     for _ in 0..10000000 as u64 {
         let key = generator.get_key_zipf(&mut rand);
-        let mut ser_key = vec![];
-        ser_key.extend(key.as_bytes().iter());
-        let op: Operation = rand.sample(Standard);
+        let map = generate_kv_pairs(&mut rand);
 
-        let request = match &op {
-            Operation::Read => {
-                println!("Read {:?}",&ser_key);
-                Action::Read(ser_key)
-            },
-            Operation::Insert =>{
-                let map = generate_kv_pairs(&mut rand);
-                println!("Insert {:?} {:?}", &key,&map);
-                let ser_map = bincode::serialize(&map).expect("failed to serialize map");
-                Action::Insert(ser_key,ser_map)
-            },
-            Operation::Remove =>{ 
-                println!("Remove {:?}",&ser_key);
-
-                Action::Remove(ser_key)
-
-            },
-            Operation::Update => {
-
-                let map = generate_kv_pairs(&mut rand);
-                println!("Update {:?} {:?}",&key,&map);
-
-                let ser_map = bincode::serialize(&map).expect("failed to serialize map");
-                Action::Insert(ser_key,ser_map)
-            },
-        };
-
-
-        let res = match rt::block_on(concurrent_client.update::<Ordered>(Arc::from(request))).expect("error").as_ref() {
-            crate::serialize::Reply::None => None,
-            crate::serialize::Reply::Single(bytes) =>{
-            let map: HashMap<String,String> = bincode::deserialize(&bytes).expect("failed to deserialize reply");
-            Some(map)
-            },
-        };
-
-        println!("Reply: {:?}", &res);
+        let ser_map = bincode::serialize(&map).expect("failed to serialize map");
+        let req = Action::Insert(key.as_bytes().to_vec(),ser_map);
+        println!("update");
+        let _res = rt::block_on(concurrent_client.update::<Ordered>(Arc::from(req))).expect("error");
     }
-    
 }

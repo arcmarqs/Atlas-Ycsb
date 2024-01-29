@@ -539,7 +539,7 @@ fn run_client(client: SMRClient, generator: Arc<Generator>, n_clients: usize) {
         }
     }
 
-    for _ in 0..10000000 as u64 {
+    for _ in 0..9000000000 as usize {
         let key = generator.get_key_zipf(&mut rand);
         /*    let request = match &op {
             Operation::Read => {
