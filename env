@@ -21,14 +21,14 @@ export THREADPOOL_THREADS=24
 export MIO_WORKER_COUNT=2
 export ASYNC_THREADS=6
 
-export WATERMARK=50
+export WATERMARK=75
 
 #1 ms batch timeouts
-export BATCH_TIMEOUT_MICROS=750
+export BATCH_TIMEOUT_MICROS=400
 #1 ms sleep between client pool collections
 export BATCH_SLEEP_MICROS=500
 
-export OPS_NUMBER=50000000
+export OPS_NUMBER=5000000000
 export CONCURRENT_RQS=10
 export MEASUREMENT_INTERVAL=2000
 

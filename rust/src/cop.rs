@@ -595,4 +595,6 @@ fn run_client(client: SMRClient, generator: Arc<Generator>, n_clients: usize) {
 
         //println!("Reply: {:?}", &res);
     }
+
+    println!("completed all ops");
 }
