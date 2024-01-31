@@ -290,10 +290,15 @@ fn client_async_main() {
 
     println!("arg_vec: {:?}", arg_vec);
 
-    let mut first_id: u32 = env::var("ID").unwrap_or(String::from("1000")).parse().unwrap();
+    let mut first_id: u32 = env::var("ID")
+        .unwrap_or(String::from("1000"))
+        .parse()
+        .unwrap();
 
-    let client_count: u32 = env::var("NUM_CLIENTS").unwrap_or(String::from("1")).parse().unwrap();
-
+    let client_count: u32 = env::var("NUM_CLIENTS")
+        .unwrap_or(String::from("1"))
+        .parse()
+        .unwrap();
 
     //let client_count: u32 = env::var("NUM_CLIENTS").unwrap_or(String::from("1")).parse().unwrap();
 
@@ -301,10 +306,12 @@ fn client_async_main() {
         .take(clients_config.len())
         .enumerate()
         .map(|(id, sk)| (first_id as u64 + id as u64, sk))
-        .chain(sk_stream()
-            .take(replicas_config.len())
-            .enumerate()
-            .map(|(id, sk)| (id as u64, sk)))
+        .chain(
+            sk_stream()
+                .take(replicas_config.len())
+                .enumerate()
+                .map(|(id, sk)| (id as u64, sk)),
+        )
         .collect();
     let public_keys: IntMap<PublicKey> = secret_keys
         .iter()
@@ -377,19 +384,18 @@ fn client_async_main() {
         clients.push(rt::block_on(rx.recv()).unwrap());
     }
 
-
     let mut handles = Vec::with_capacity(client_count as usize);
-    let keypool = generate_key_pool(1000000);
-    let generator = Arc::new(Generator::new(keypool, 1000000));
+    let keypool = generate_key_pool(NUM_KEYS);
+    let generator = Arc::new(Generator::new(keypool, NUM_KEYS.try_into().unwrap()));
 
     for client in clients {
         let id = client.id();
         let gen = generator.clone();
         //generate_log(id.0);
-
+        let cli_len = client_count as usize;
         let h = std::thread::Builder::new()
             .name(format!("Client {:?}", client.id()))
-            .spawn(move || { run_client(client, gen) })
+            .spawn(move || run_client(client, gen, cli_len))
             .expect(format!("Failed to start thread for client {:?} ", &id.id()).as_str());
 
         handles.push(h);
