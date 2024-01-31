@@ -36,7 +36,7 @@ use rand_xoshiro::SplitMix64;
 use semaphores::RawSemaphore;
 
 use crate::common::*;
-use crate::generator::{generate_kv_pairs, Operation, Generator, generate_key_pool};
+use crate::generator::{generate_key_pool, generate_kv_pairs, Generator, Operation, NUM_KEYS};
 use crate::serialize::Action;
 
 #[derive(Debug)]
