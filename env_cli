@@ -9,19 +9,19 @@ export UPDATE_MAX_FDS=0
 export NUM_CLIENTS=45
 export CLIENT_GEN=45
 export NUM_REPLICAS=4
-export BATCH_SIZE=5000
-export MAX_BATCH_SIZE=25000
+export BATCH_SIZE=200
+export MAX_BATCH_SIZE=5000
 export CLIENTS_PER_POOL=100
 
 #Global batch size from all joined client pools
-export GLOBAL_BATCH_SIZE=5000
+export GLOBAL_BATCH_SIZE=500
 export GLOBAL_BATCH_SLEEP_MICROS=1000
 
 export THREADPOOL_THREADS=24
 export MIO_WORKER_COUNT=2
 export ASYNC_THREADS=6
 
-export WATERMARK=50
+export WATERMARK=20
 
 #1 ms batch timeouts
 export BATCH_TIMEOUT_MICROS=5000
