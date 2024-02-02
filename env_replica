@@ -15,21 +15,21 @@ export CLIENTS_PER_POOL=100
 
 #Global batch size from all joined client pools
 export GLOBAL_BATCH_SIZE=5000
-export GLOBAL_BATCH_SLEEP_MICROS=750
+export GLOBAL_BATCH_SLEEP_MICROS=1000
 
-export THREADPOOL_THREADS=32
+export THREADPOOL_THREADS=24
 export MIO_WORKER_COUNT=2
-export ASYNC_THREADS=8
+export ASYNC_THREADS=6
 
 export WATERMARK=50
 
 #1 ms batch timeouts
-export BATCH_TIMEOUT_MICROS=1500
+export BATCH_TIMEOUT_MICROS=3500
 #1 ms sleep between client pool collections
-export BATCH_SLEEP_MICROS=750
+export BATCH_SLEEP_MICROS=1000
 
 export OPS_NUMBER=5000000000
-export CONCURRENT_RQS=10
+export CONCURRENT_RQS=5
 export MEASUREMENT_INTERVAL=2000
 
 export STATE_SIZE=56
