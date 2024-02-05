@@ -9,7 +9,7 @@ export UPDATE_MAX_FDS=0
 export NUM_CLIENTS=50
 export CLIENT_GEN=50
 export NUM_REPLICAS=4
-export BATCH_SIZE=80
+export BATCH_SIZE=100
 export MAX_BATCH_SIZE=500
 export CLIENTS_PER_POOL=100
 
@@ -24,7 +24,7 @@ export ASYNC_THREADS=6
 export WATERMARK=10
 
 #1 ms batch timeouts
-export BATCH_TIMEOUT_MICROS=7500
+export BATCH_TIMEOUT_MICROS=5000
 #1 ms sleep between client pool collections
 export BATCH_SLEEP_MICROS=3250
 
