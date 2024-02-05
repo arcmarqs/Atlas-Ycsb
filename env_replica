@@ -7,7 +7,7 @@ export VERBOSE=true
 export UPDATE_MAX_FDS=0
 
 export NUM_CLIENTS=50
-export CLIENT_GEN=45
+export CLIENT_GEN=50
 export NUM_REPLICAS=4
 export BATCH_SIZE=250
 export MAX_BATCH_SIZE=5000
@@ -24,7 +24,7 @@ export ASYNC_THREADS=6
 export WATERMARK=20
 
 #1 ms batch timeouts
-export BATCH_TIMEOUT_MICROS=1500
+export BATCH_TIMEOUT_MICROS=10000
 #1 ms sleep between client pool collections
 export BATCH_SLEEP_MICROS=750
 
