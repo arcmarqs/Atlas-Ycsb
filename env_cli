@@ -15,7 +15,7 @@ export CLIENTS_PER_POOL=100
 
 #Global batch size from all joined client pools
 export GLOBAL_BATCH_SIZE=500
-export GLOBAL_BATCH_SLEEP_MICROS=3150
+export GLOBAL_BATCH_SLEEP_MICROS=3250
 
 export THREADPOOL_THREADS=32
 export MIO_WORKER_COUNT=2
@@ -26,10 +26,10 @@ export WATERMARK=25
 #1 ms batch timeouts
 export BATCH_TIMEOUT_MICROS=7500
 #1 ms sleep between client pool collections
-export BATCH_SLEEP_MICROS=3150
+export BATCH_SLEEP_MICROS=3250
 
 export OPS_NUMBER=5000000000
-export CONCURRENT_RQS=5
+export CONCURRENT_RQS=10
 export MEASUREMENT_INTERVAL=2000
 
 export STATE_SIZE=56
@@ -41,4 +41,4 @@ export RUST_LOG=INFO
 
 #export ID=0
 
-export PATH_TO_OS_STATS="/home/${USER}/febft_results/os_stats_bin"s
+export PATH_TO_OS_STATS="/home/${USER}/febft_results/os_stats_bin"
