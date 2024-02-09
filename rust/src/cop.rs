@@ -545,7 +545,7 @@ fn run_client(client: SMRClient, generator: Arc<Generator>, n_clients: usize) {
         let op: Operation = rand.sample(Standard);
         let request = match &op {
             Operation::Read => {
-              //  println!("Read {:?}",&ser_key);
+                println!("Read {:?}",&key);
                 Action::Read(ser_key)
             },
             Operation::Insert =>{
@@ -578,7 +578,6 @@ fn run_client(client: SMRClient, generator: Arc<Generator>, n_clients: usize) {
             .update_callback::<Ordered>(
                 Arc::from(request),
                 Box::new(move |_rep| {
-                    println!("Update {:?}", &key);
 
                     sem_clone.release();
                 }),
