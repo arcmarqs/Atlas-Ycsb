@@ -36,7 +36,7 @@ use rand_xoshiro::SplitMix64;
 use semaphores::RawSemaphore;
 
 use crate::common::*;
-use crate::generator::{generate_key_pool, generate_kv_pairs, Generator, Operation, NUM_KEYS};
+use crate::generator::{generate_key_pool, generate_kv_pairs, generate_monotonic_keypool, Generator, Operation, NUM_KEYS};
 use crate::serialize::Action;
 
 #[derive(Debug)]
@@ -445,7 +445,7 @@ fn client_async_main() {
     }
 
     let mut handles = Vec::with_capacity(client_count as usize);
-    let keypool = generate_key_pool(NUM_KEYS);
+    let keypool = generate_monotonic_keypool(NUM_KEYS);
     let generator = Arc::new(Generator::new(keypool, NUM_KEYS.try_into().unwrap()));
 
     for client in clients {
@@ -494,10 +494,11 @@ fn run_client(client: SMRClient, generator: Arc<Generator>, n_clients: usize) {
     );
 
     for i in 0..rounds {
-            let key = i * n_clients + id as usize;
+        if let Some(key) = generator.get(i * n_clients + id as usize) {
             let map = generate_kv_pairs(&mut rand);
             let ser_map = bincode::serialize(&map).expect("failed to serialize map");
-            let req = Action::Insert(key.to_be_bytes().to_vec(), ser_map);
+            println!("{:?}", &key);
+            let req = Action::Insert(key, ser_map);
             sem.acquire();
 
             let sem_clone = sem.clone();
@@ -510,17 +511,20 @@ fn run_client(client: SMRClient, generator: Arc<Generator>, n_clients: usize) {
                     }),
                 )
                 .expect("error");
-        
+        } else {
+            println!("No key with idx {:?}", i * n_clients + id as usize);
+        }
     }
 
     if id == 1 {
         for i in 0..rem {
-                let key =rounds * n_clients + i as usize; 
+            if let Some(key) = generator.get(rounds * n_clients + i as usize) {
                 let map = generate_kv_pairs(&mut rand);
 
                 let ser_map = bincode::serialize(&map).expect("failed to serialize map");
-                let req = Action::Insert(key.to_be_bytes().to_vec(), ser_map);
+                println!("{:?}", &key);
 
+                let req = Action::Insert(key, ser_map);
                 sem.acquire();
 
                 let sem_clone = sem.clone();
@@ -533,8 +537,12 @@ fn run_client(client: SMRClient, generator: Arc<Generator>, n_clients: usize) {
                         }),
                     )
                     .expect("error");
+            } else {
+                println!("No key with idx {:?}", rounds * n_clients + i as usize);
+            }
         }
     }
+
 
     for _ in 0..9000000000 as usize {
         let key = rand.gen_range(0..10000) as usize;
