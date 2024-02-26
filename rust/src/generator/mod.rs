@@ -6,6 +6,7 @@ use rand_xoshiro::{self, SplitMix64};
 use rand_core::SeedableRng;
 use rand_distr::{Alphanumeric, Distribution, Standard, WeightedIndex, Zipf, Uniform};
 use sharded_slab::Pool;
+use uuid::Uuid;
 
 const PRIMARY_KEY_LEN: usize = 32;
 const SECONDARY_KEY_LEN: usize = 16;
@@ -15,21 +16,21 @@ const HASHMAP_LEN: usize = 10;
 // for more "randomness" in the distribution this should be between  ]0.0,0.24[
 const ZIPF_CONSTANT: f64 = 0.0;
 
-pub const NUM_KEYS: usize = 128000;
+pub const NUM_KEYS: usize = 1024000;
 const INSERT_OPS: u32 = 0;
-const READ_OPS: u32 = 19;
+const READ_OPS: u32 = 0;
 const REMOVE_OPS: u32 = 0;
 const UPDATE_OPS: u32 = 1;
 
 #[derive(Debug)]
 pub struct Generator {
-    pool: Pool<String>,
+    pool: Pool<Vec<u8>>,
     distribution: Zipf<f64>,
     size: u64,
 }
 
 impl Generator {
-    pub fn new(pool: Pool<String>, size: u64) -> Self {
+    pub fn new(pool: Pool<Vec<u8>>, size: u64) -> Self {
         let distribution = Zipf::new(size, ZIPF_CONSTANT).expect("fail");
         Self {
             pool,
@@ -39,7 +40,7 @@ impl Generator {
     }
 
     //get a random Zipfian distributed key, if the zipfian constant is 0, the distribution will be uniform, constants > ~.25 will start to behave more like an exponential distribution.
-    pub fn get_key_zipf<R: Rng + ?Sized>(&self, rng: &mut R) -> String {
+    pub fn get_key_zipf<R: Rng + ?Sized>(&self, rng: &mut R) -> Vec<u8> {
         // the distribution generates integers starting at 1 while the indexes of the Pool start at 0.
         let index = (self.distribution.sample(rng) - 1.0) as usize;
         let key = self.pool.get(index);
@@ -48,11 +49,11 @@ impl Generator {
     }
 
     //get a random, uniformly distributed key
-    pub fn get_rand_key<R: Rng + ?Sized>(&self, rng: &mut R) -> String {
+    pub fn get_rand_key<R: Rng + ?Sized>(&self, rng: &mut R) -> Vec<u8> {
         self.pool.get(Uniform::new(0, self.size).sample(rng) as usize).unwrap().clone()
     }
 
-    pub fn get(&self,idx: usize) -> Option<String> {
+    pub fn get(&self,idx: usize) -> Option<Vec<u8>> {
         if let Some(res) = self.pool.get(idx) {
             Some(res.clone())
         } else {
@@ -95,6 +96,16 @@ pub fn generate_key_pool(num_keys: usize) -> Pool<String> {
     let mut rand = SplitMix64::seed_from_u64(160120241634);
     for _ in 0..num_keys {
         let _ = pool.create_with(|s| s.push_str(Alphanumeric.sample_string(&mut rand, PRIMARY_KEY_LEN).as_str())).unwrap();
+    }    
+
+    pool
+}
+
+pub fn generate_monotonic_keypool(num_keys: usize) -> Pool<Vec<u8>> {
+    let pool: Pool<Vec<u8>> = Pool::new();
+    for i in 0..num_keys {
+        let uuid = Uuid::from_u128(i as u128);
+        let _ = pool.create_with(|vec| vec.extend(uuid.as_bytes().to_vec()));
     }    
 
     pool
