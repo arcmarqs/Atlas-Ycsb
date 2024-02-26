@@ -497,7 +497,6 @@ fn run_client(client: SMRClient, generator: Arc<Generator>, n_clients: usize) {
         if let Some(key) = generator.get(i * n_clients + id as usize) {
             let map = generate_kv_pairs(&mut rand);
             let ser_map = bincode::serialize(&map).expect("failed to serialize map");
-            println!("{:?}", &key);
             let req = Action::Insert(key, ser_map);
             sem.acquire();
 
@@ -545,24 +544,23 @@ fn run_client(client: SMRClient, generator: Arc<Generator>, n_clients: usize) {
 
 
     for _ in 0..9000000000 as usize {
-        let key = rand.gen_range(0..10000) as usize;
-        let ser_key = key.to_be_bytes().to_vec();
+        let key = generator.get_key_zipf(&mut rand);
         let op: Operation = rand.sample(Standard);
         let request = match &op {
             Operation::Read => {
                 println!("Read {:?}",&key);
-                Action::Read(ser_key)
+                Action::Read(key)
             },
             Operation::Insert =>{
                 let map = generate_kv_pairs(&mut rand);
                // println!("Insert {:?} {:?}", &key,&map);
                 let ser_map = bincode::serialize(&map).expect("failed to serialize map");
-                Action::Insert(ser_key,ser_map)
+                Action::Insert(key,ser_map)
             },
             Operation::Remove =>{
                 //println!("Remove {:?}",&ser_key);
 
-                Action::Remove(ser_key)
+                Action::Remove(key)
 
             },
             Operation::Update => {
@@ -571,7 +569,7 @@ fn run_client(client: SMRClient, generator: Arc<Generator>, n_clients: usize) {
                 println!("Update {:?}",&key);
 
                 let ser_map = bincode::serialize(&map).expect("failed to serialize map");
-                Action::Insert(ser_key,ser_map)
+                Action::Insert(key,ser_map)
             },
         };
 
