@@ -31,7 +31,7 @@ use rand_distr::Standard;
 use rand_xoshiro::SplitMix64;
 
 use crate::common::*;
-use crate::generator::{Generator, Operation, generate_kv_pairs, generate_key_pool};
+use crate::generator::{generate_key_pool, generate_kv_pairs, generate_monotonic_keypool, Generator, Operation};
 use crate::serialize::Action;
 
 #[derive(Debug)]
@@ -474,7 +474,7 @@ fn client_async_main() {
     //crate::os_statistics::start_statistics_thread(NodeId(first_cli));
 
     let mut handles = Vec::with_capacity(client_count as usize);
-    let keypool = generate_key_pool(100000);
+    let keypool = generate_monotonic_keypool(1000000);
     let generator = Arc::new(Generator::new(keypool, 100000));
 
     for client in clients {
@@ -516,7 +516,7 @@ fn run_client(client: SMRClient, generator: Arc<Generator>) {
     for _ in 0..10000000 as u64 {
         let key = generator.get_key_zipf(&mut rand);
         let mut ser_key = vec![];
-        ser_key.extend(key.as_bytes().iter());
+        ser_key.extend(key.iter());
         let op: Operation = rand.sample(Standard);
 
         let request = match &op {

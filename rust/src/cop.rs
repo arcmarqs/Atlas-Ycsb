@@ -36,7 +36,7 @@ use rand_xoshiro::SplitMix64;
 use semaphores::RawSemaphore;
 
 use crate::common::*;
-use crate::generator::{generate_key_pool, generate_kv_pairs, Generator, Operation, NUM_KEYS};
+use crate::generator::{generate_key_pool, generate_kv_pairs, generate_monotonic_keypool, Generator, Operation, NUM_KEYS};
 use crate::serialize::Action;
 
 #[derive(Debug)]
@@ -385,7 +385,7 @@ fn client_async_main() {
     }
 
     let mut handles = Vec::with_capacity(client_count as usize);
-    let keypool = generate_key_pool(NUM_KEYS);
+    let keypool = generate_monotonic_keypool(NUM_KEYS);
     let generator = Arc::new(Generator::new(keypool, NUM_KEYS.try_into().unwrap()));
 
     for client in clients {
@@ -432,11 +432,12 @@ fn run_client(client: SMRClient, generator: Arc<Generator>, n_clients: usize) {
         "client {:?} loading {:?} rounds with {:?} remainder",
         id, rounds, rem
     );
+
     for i in 0..rounds {
         if let Some(key) = generator.get(i * n_clients + id as usize) {
             let map = generate_kv_pairs(&mut rand);
             let ser_map = bincode::serialize(&map).expect("failed to serialize map");
-            let req = Action::Insert(key.as_bytes().to_vec(), ser_map);
+            let req = Action::Insert(key, ser_map);
             sem.acquire();
 
             let sem_clone = sem.clone();
@@ -460,7 +461,9 @@ fn run_client(client: SMRClient, generator: Arc<Generator>, n_clients: usize) {
                 let map = generate_kv_pairs(&mut rand);
 
                 let ser_map = bincode::serialize(&map).expect("failed to serialize map");
-                let req = Action::Insert(key.as_bytes().to_vec(), ser_map);
+                println!("{:?}", &key);
+
+                let req = Action::Insert(key, ser_map);
                 sem.acquire();
 
                 let sem_clone = sem.clone();
@@ -479,25 +482,25 @@ fn run_client(client: SMRClient, generator: Arc<Generator>, n_clients: usize) {
         }
     }
 
+
     for _ in 0..9000000000 as usize {
         let key = generator.get_key_zipf(&mut rand);
-        let ser_key = key.as_bytes().to_vec();
         let op: Operation = rand.sample(Standard);
         let request = match &op {
             Operation::Read => {
                 println!("Read {:?}",&key);
-                Action::Read(ser_key)
+                Action::Read(key)
             },
             Operation::Insert =>{
                 let map = generate_kv_pairs(&mut rand);
                // println!("Insert {:?} {:?}", &key,&map);
                 let ser_map = bincode::serialize(&map).expect("failed to serialize map");
-                Action::Insert(ser_key,ser_map)
+                Action::Insert(key,ser_map)
             },
             Operation::Remove =>{
                 //println!("Remove {:?}",&ser_key);
 
-                Action::Remove(ser_key)
+                Action::Remove(key)
 
             },
             Operation::Update => {
@@ -506,7 +509,7 @@ fn run_client(client: SMRClient, generator: Arc<Generator>, n_clients: usize) {
                 println!("Update {:?}",&key);
 
                 let ser_map = bincode::serialize(&map).expect("failed to serialize map");
-                Action::Insert(ser_key,ser_map)
+                Action::Insert(key,ser_map)
             },
         };
 
