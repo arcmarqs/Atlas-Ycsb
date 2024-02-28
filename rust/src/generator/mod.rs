@@ -7,7 +7,7 @@ use rand_core::SeedableRng;
 use rand_distr::{Alphanumeric, Distribution, Standard, WeightedIndex, Zipf, Uniform};
 use sharded_slab::Pool;
 
-const PRIMARY_KEY_LEN: usize = 32;
+pub const PRIMARY_KEY_LEN: usize = 32;
 const SECONDARY_KEY_LEN: usize = 16;
 const VALUE_LEN: usize = 64;
 const HASHMAP_LEN: usize = 10;
@@ -17,7 +17,7 @@ const ZIPF_CONSTANT: f64 = 0.0;
 
 pub const NUM_KEYS: usize = 128000;
 const INSERT_OPS: u32 = 0;
-const READ_OPS: u32 = 19;
+const READ_OPS: u32 = 0;
 const REMOVE_OPS: u32 = 0;
 const UPDATE_OPS: u32 = 1;
 
