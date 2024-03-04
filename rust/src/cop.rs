@@ -9,7 +9,9 @@ use anyhow::Context;
 use atlas_common::collections::HashMap;
 use atlas_common::error::*;
 use intmap::IntMap;
+use konst::iter;
 use konst::primitive::parse_usize;
+use log::kv::Key;
 use log::LevelFilter;
 use log4rs::append::console::ConsoleAppender;
 use log4rs::append::rolling_file::policy::compound::roll::fixed_window::FixedWindowRoller;
@@ -36,7 +38,10 @@ use rand_xoshiro::SplitMix64;
 use semaphores::RawSemaphore;
 
 use crate::common::*;
-use crate::generator::{generate_key_pool, generate_kv_pairs, generate_monotonic_keypool, Generator, Operation, NUM_KEYS};
+use crate::generator::{
+    generate_key_pool, generate_kv_pairs, generate_monotonic_keypool, Generator, Operation,
+    NUM_KEYS,
+};
 use crate::serialize::Action;
 
 #[derive(Debug)]
@@ -542,59 +547,58 @@ fn run_client(client: SMRClient, generator: Arc<Generator>, n_clients: usize) {
         }
     }
 
+    for _ in 9000000 {
+        let keys = generator.get_range(&mut rand);
 
-    for _ in 0..9000000000 as usize {
-        let key = generator.get_key_zipf(&mut rand);
-        let op: Operation = rand.sample(Standard);
-        let request = match &op {
-            Operation::Read => {
-                println!("Read {:?}",&key);
-                Action::Read(key)
-            },
-            Operation::Insert =>{
-                let map = generate_kv_pairs(&mut rand);
-               // println!("Insert {:?} {:?}", &key,&map);
-                let ser_map = bincode::serialize(&map).expect("failed to serialize map");
-                Action::Insert(key,ser_map)
-            },
-            Operation::Remove =>{
-                //println!("Remove {:?}",&ser_key);
+        for key in keys {
+            let op: Operation = rand.sample(Standard);
+            let request = match &op {
+                Operation::Read => {
+                    println!("Read {:?}", &key);
+                    Action::Read(key)
+                }
+                Operation::Insert => {
+                    let map = generate_kv_pairs(&mut rand);
+                    // println!("Insert {:?} {:?}", &key,&map);
+                    let ser_map = bincode::serialize(&map).expect("failed to serialize map");
+                    Action::Insert(key, ser_map)
+                }
+                Operation::Remove => {
+                    //println!("Remove {:?}",&ser_key);
 
-                Action::Remove(key)
+                    Action::Remove(key)
+                }
+                Operation::Update => {
+                    let map = generate_kv_pairs(&mut rand);
+                    println!("Update {:?}", &key);
 
-            },
-            Operation::Update => {
+                    let ser_map = bincode::serialize(&map).expect("failed to serialize map");
+                    Action::Insert(key, ser_map)
+                }
+            };
 
-                let map = generate_kv_pairs(&mut rand);
-                println!("Update {:?}",&key);
+            sem.acquire();
 
-                let ser_map = bincode::serialize(&map).expect("failed to serialize map");
-                Action::Insert(key,ser_map)
-            },
-        };
+            let sem_clone = sem.clone();
 
-        sem.acquire();
+            concurrent_client
+                .update_callback::<Ordered>(
+                    Arc::from(request),
+                    Box::new(move |_rep| {
+                        sem_clone.release();
+                    }),
+                )
+                .expect("error");
+            /*let _ = match rt::block_on(concurrent_client.update::<Ordered>(Arc::from(request)).expect("error").as_ref() {
+                crate::serialize::Reply::None => None,
+                crate::serialize::Reply::Single(bytes) =>{
+                let map: HashMap<String,String> = bincode::deserialize(&bytes).expect("failed to deserialize reply");
+                Some(map)
+                },
+            };*/
 
-        let sem_clone = sem.clone();
-
-        concurrent_client
-            .update_callback::<Ordered>(
-                Arc::from(request),
-                Box::new(move |_rep| {
-
-                    sem_clone.release();
-                }),
-            )
-            .expect("error");
-        /*let _ = match rt::block_on(concurrent_client.update::<Ordered>(Arc::from(request)).expect("error").as_ref() {
-            crate::serialize::Reply::None => None,
-            crate::serialize::Reply::Single(bytes) =>{
-            let map: HashMap<String,String> = bincode::deserialize(&bytes).expect("failed to deserialize reply");
-            Some(map)
-            },
-        };*/
-
-        //println!("Reply: {:?}", &res);
+            //println!("Reply: {:?}", &res);
+        }
     }
 
     println!("completed all ops");

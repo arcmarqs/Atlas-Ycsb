@@ -44,8 +44,20 @@ impl Generator {
         // the distribution generates integers starting at 1 while the indexes of the Pool start at 0.
         let index = (self.distribution.sample(rng) - 1.0) as usize;
         let key = self.pool.get(index);
-
         key.unwrap().clone()
+    }
+
+    pub fn get_range<R: Rng + ?Sized>(&self,rng: &mut R)-> Vec<Vec<u8>> {
+        let index = (self.distribution.sample(rng) - 1.0) as usize;
+        let range = rng.gen_range(255..65000);
+        let mut set = vec![];
+        for i in 0..range {
+            let key = self.pool.get(index + i);
+            if key.is_some() {
+                set.push(key.unwrap().clone());
+            }
+        }
+        set
     }
 
     //get a random, uniformly distributed key
