@@ -547,7 +547,7 @@ fn run_client(client: SMRClient, generator: Arc<Generator>, n_clients: usize) {
         }
     }
 
-    for _ in 9000000 {
+    for i in 0..9000000 {
         let keys = generator.get_range(&mut rand);
 
         for key in keys {
