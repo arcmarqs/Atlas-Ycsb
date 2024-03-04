@@ -115,9 +115,9 @@ pub fn generate_key_pool(num_keys: usize) -> Pool<String> {
 
 pub fn generate_monotonic_keypool(num_keys: usize) -> Pool<Vec<u8>> {
     let pool: Pool<Vec<u8>> = Pool::new();
-   // let ts = Timestamp::from_unix(NoContext, 1497624119, 1234);
+    let ts = Timestamp::from_unix(NoContext, 1497624119, 1234);
     for i in 0..num_keys {
-        let uuid = Uuid::now_v7();
+        let uuid = Uuid::new_v7(ts);
         let _ = pool.create_with(|vec| vec.extend(uuid.as_bytes().to_vec()));
     }    
 
