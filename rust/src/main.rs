@@ -1,3 +1,10 @@
+use std::{collections::{BTreeMap, HashMap}};
+
+use rand::{ Rng, SeedableRng};
+use rand_xoshiro::SplitMix64;
+
+use crate::generator::{generate_kv_pairs, generate_monotonic_keypool, Generator, Operation};
+
 mod generator;
 mod local;
 mod common;
@@ -26,14 +33,15 @@ fn main() {
     }
 }
 
+
 /* 
 fn main() {
-    let mut state: BTreeMap<String,HashMap<String,String>> = BTreeMap::new();
-    let kp = generate_key_pool(1000);
+    let mut state: BTreeMap<Vec<u8>,HashMap<String,String>> = BTreeMap::new();
+    let kp = generate_monotonic_keypool(10000);
     let mut opcount = [0;4];
-    let mut freq_count: BTreeMap<String,i32> = BTreeMap::new();
-    let mut rand = thread_rng();
-    let generator = Generator::new(Arc::new(kp),1000);
+    let mut freq_count: BTreeMap<Vec<u8>,i32> = BTreeMap::new();
+    let mut rand = SplitMix64::seed_from_u64(6453343);
+    let generator = Generator::new(kp, 10000);
     for _ in 0..1000 {
         let key = generator.get_key_zipf(&mut rand);
         freq_count.entry(key.clone()).and_modify(|val| {*val += 1}  ).or_insert(0);
@@ -45,7 +53,7 @@ fn main() {
                 opcount[0] += 1
             },
             Operation::Insert =>{
-                let map = generate_kv_pairs();
+                let map = generate_kv_pairs(&mut rand);
                 println!("insert {:?} {:?}", &key, map);
                 state.insert(key, map);
                 opcount[1] += 1
@@ -56,7 +64,7 @@ fn main() {
             },
             Operation::Update => {
                 println!("update {:?} res {:?}", &key, state.get(&key));
-                let map = generate_kv_pairs();
+                let map = generate_kv_pairs(&mut rand);
                 state.insert(key, map);
                 opcount[3] += 1
             },
@@ -65,6 +73,4 @@ fn main() {
 
     println!("OPCOUNT {:?}", opcount);
     println!("{:?}",state);
-}
-
-*/
+}*/

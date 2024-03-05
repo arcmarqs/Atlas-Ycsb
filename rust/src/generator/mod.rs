@@ -6,7 +6,7 @@ use rand_xoshiro::{self, SplitMix64};
 use rand_core::SeedableRng;
 use rand_distr::{Alphanumeric, Distribution, Standard, WeightedIndex, Zipf, Uniform};
 use sharded_slab::Pool;
-use uuid::{NoContext, Timestamp, Uuid};
+use uuid::{timestamp, ClockSequence, Context, NoContext, Timestamp, Uuid};
 
 const PRIMARY_KEY_LEN: usize = 32;
 const SECONDARY_KEY_LEN: usize = 16;
@@ -49,7 +49,7 @@ impl Generator {
 
     pub fn get_range<R: Rng + ?Sized>(&self,rng: &mut R)-> Vec<Vec<u8>> {
         let index = (self.distribution.sample(rng) - 1.0) as usize;
-        let range = rng.gen_range(255..65000);
+        let range = rng.gen_range(255..62000);
         let mut set = vec![];
         for i in 0..range {
             let key = self.pool.get(index + i);
@@ -115,9 +115,13 @@ pub fn generate_key_pool(num_keys: usize) -> Pool<String> {
 
 pub fn generate_monotonic_keypool(num_keys: usize) -> Pool<Vec<u8>> {
     let pool: Pool<Vec<u8>> = Pool::new();
-    let ts = Timestamp::from_unix(NoContext, 1497624119, 1234);
-    for i in 0..num_keys {
-        let uuid = Uuid::new_v7(ts);
+    let context = Context::new(42);
+    let ts = Timestamp::from_rfc4122(14976234442241191232, context.generate_sequence(0, 0));
+    let mut rand = SplitMix64::seed_from_u64(160120241634);
+
+    for _i in 0..num_keys {
+        let node: [u8;6] = rand.gen();
+        let uuid = Uuid::new_v1(ts, &node);
         let _ = pool.create_with(|vec| vec.extend(uuid.as_bytes().to_vec()));
     }    
 
