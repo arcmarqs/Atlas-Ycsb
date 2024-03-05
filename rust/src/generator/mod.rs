@@ -1,3 +1,4 @@
+use std::io::Read;
 use std::{sync::Arc, time::Instant};
 use std::iter::once;
 use std::collections::HashMap;
@@ -117,10 +118,10 @@ pub fn generate_monotonic_keypool(num_keys: usize) -> Pool<Vec<u8>> {
     let pool: Pool<Vec<u8>> = Pool::new();
     let context = Context::new(42);
     let ts = Timestamp::from_rfc4122(14976234442241191232, context.generate_sequence(0, 0));
-    let mut rand = SplitMix64::seed_from_u64(160120241634);
 
-    for _i in 0..num_keys {
-        let node: [u8;6] = rand.gen();
+    for i in 0..num_keys {
+        let bytes = i.to_be_bytes();
+        let node: [u8;6] = bytes[2..].try_into().expect("wrong size");
         let uuid = Uuid::new_v1(ts, &node);
         let _ = pool.create_with(|vec| vec.extend(uuid.as_bytes().to_vec()));
     }    
