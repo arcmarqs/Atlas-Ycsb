@@ -17,7 +17,7 @@ const HASHMAP_LEN: usize = 10;
 // for more "randomness" in the distribution this should be between  ]0.0,0.24[
 const ZIPF_CONSTANT: f64 = 0.0;
 
-pub const NUM_KEYS: usize = 1024000;
+pub const NUM_KEYS: usize = 4096000;
 const INSERT_OPS: u32 = 0;
 const READ_OPS: u32 = 20;
 const REMOVE_OPS: u32 = 0;
@@ -50,7 +50,7 @@ impl Generator {
 
     pub fn get_range<R: Rng + ?Sized>(&self,rng: &mut R)-> Vec<Vec<u8>> {
         let index = (self.distribution.sample(rng) - 1.0) as usize;
-        let range = rng.gen_range(255..62000);
+        let range = rng.gen_range(255..10000);
         let mut set = vec![];
         for i in 0..range {
             let key = self.pool.get(index + i);
