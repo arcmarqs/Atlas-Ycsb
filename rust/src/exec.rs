@@ -8,7 +8,7 @@ use rand_core::SeedableRng;
 use rand_xoshiro::SplitMix64;
 
 
-use crate::{serialize::{KvData, self}, generator::{generate_key_pool, Generator, generate_kv_pairs}};
+use crate::{generator::{generate_key_pool, generate_kv_pairs, Generator, SECONDARY_KEY_LEN}, serialize::{self, KvData}};
 
 #[derive(Default)]
 pub struct KVApp;
@@ -25,7 +25,7 @@ fn initial_state() -> Result<StateOrchestrator> {
 
     let path = format!("{}{}", "./appdata_",id);
 
-    let mut state = StateOrchestrator::new(&path);
+    let mut state = StateOrchestrator::new(&path, SECONDARY_KEY_LEN);
     
     Ok(state)
 }
