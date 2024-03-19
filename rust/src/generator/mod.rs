@@ -10,7 +10,7 @@ use sharded_slab::Pool;
 use uuid::{timestamp, ClockSequence, Context, NoContext, Timestamp, Uuid};
 
 const PRIMARY_KEY_LEN: usize = 32;
-const SECONDARY_KEY_LEN: usize = 16;
+pub const SECONDARY_KEY_LEN: usize = 16;
 const VALUE_LEN: usize = 64;
 const HASHMAP_LEN: usize = 10;
 
