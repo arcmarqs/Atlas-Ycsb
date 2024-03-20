@@ -25,7 +25,7 @@ fn initial_state() -> Result<StateOrchestrator> {
 
     let path = format!("{}{}", "./appdata_",id);
 
-    let mut state = StateOrchestrator::new(&path, 16);
+    let mut state = StateOrchestrator::new(&path);
     
     Ok(state)
 }
