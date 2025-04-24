@@ -36,7 +36,7 @@ use rand_xoshiro::SplitMix64;
 use semaphores::RawSemaphore;
 
 use crate::common::*;
-use crate::generator::{generate_key_pool, generate_kv_pairs, Generator, Operation, NUM_KEYS};
+use crate::generator::{generate_key_pool, generate_kv_pairs, Generator, Operation};
 use crate::serialize::Action;
 
 #[derive(Debug)]
@@ -443,10 +443,10 @@ fn client_async_main() {
     for _i in 0..client_count {
         clients.push(rt::block_on(rx.recv()).unwrap());
     }
-
+    let num_keys = get_num_keys();
     let mut handles = Vec::with_capacity(client_count as usize);
-    let keypool = generate_key_pool(NUM_KEYS);
-    let generator = Arc::new(Generator::new(keypool, NUM_KEYS.try_into().unwrap()));
+    let keypool = generate_key_pool(num_keys.clone());
+    let generator = Arc::new(Generator::new(keypool, num_keys.try_into().unwrap()));
 
     for client in clients {
         let id = client.id();
@@ -485,8 +485,8 @@ fn run_client(client: SMRClient, generator: Arc<Generator>, n_clients: usize) {
     let sem = Arc::new(RawSemaphore::new(concurrent_requests));
 
     let mut rand = SplitMix64::seed_from_u64((6453 + (id * 1242)).into());
-    let rounds = NUM_KEYS / n_clients;
-    let rem = NUM_KEYS % n_clients;
+    let rounds = get_num_keys() / n_clients;
+    let rem = get_num_keys() % n_clients;
     //loading phase first
     println!(
         "client {:?} loading {:?} rounds with {:?} remainder",

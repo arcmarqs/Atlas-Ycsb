@@ -7,6 +7,8 @@ use rand_core::SeedableRng;
 use rand_distr::{Alphanumeric, Distribution, Standard, WeightedIndex, Zipf, Uniform};
 use sharded_slab::Pool;
 
+use crate::common::{get_insert_ops, get_num_keys, get_read_ops, get_remove_ops, get_update_ops};
+
 pub const PRIMARY_KEY_LEN: usize = 32;
 const SECONDARY_KEY_LEN: usize = 16;
 const VALUE_LEN: usize = 64;
@@ -14,12 +16,6 @@ const HASHMAP_LEN: usize = 10;
 
 // for more "randomness" in the distribution this should be between  ]0.0,0.24[
 const ZIPF_CONSTANT: f64 = 0.0;
-
-pub const NUM_KEYS: usize = 2048000;
-const INSERT_OPS: u32 = 0;
-const READ_OPS: u32 = 20;
-const REMOVE_OPS: u32 = 0;
-const UPDATE_OPS: u32 = 1;
 
 #[derive(Debug)]
 pub struct Generator {
@@ -122,6 +118,10 @@ pub enum Operation {
 
 impl Distribution<Operation> for Standard {
     fn sample<R: Rng + ?Sized>(&self, rng: &mut R) -> Operation {
+        let READ_OPS = get_read_ops();
+        let INSERT_OPS = get_insert_ops();
+        let REMOVE_OPS = get_remove_ops();
+        let UPDATE_OPS = get_update_ops();
         let w = WeightedIndex::new([READ_OPS, INSERT_OPS, REMOVE_OPS, UPDATE_OPS]).expect("error creating weighted distribution");
 
         match w.sample(rng) {
