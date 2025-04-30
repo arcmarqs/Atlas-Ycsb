@@ -1,4 +1,4 @@
-export COMPILE=1
+export COMPILE=0
 export LOCAL=0
 export SINGLE_SERVER=0
 
