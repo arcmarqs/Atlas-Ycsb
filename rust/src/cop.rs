@@ -60,7 +60,7 @@ impl Trigger for InitTrigger {
     }
     
     fn is_pre_process(&self) -> bool {
-        todo!()
+        false
     }
 }
 
