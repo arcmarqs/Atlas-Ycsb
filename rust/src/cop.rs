@@ -58,6 +58,10 @@ impl Trigger for InitTrigger {
             .compare_exchange(false, true, Relaxed, Relaxed)
             .is_ok())
     }
+    
+    fn is_pre_process(&self) -> bool {
+        todo!()
+    }
 }
 
 fn format_old_log(id: u32, str: &str) -> String {

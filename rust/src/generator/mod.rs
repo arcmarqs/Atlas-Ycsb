@@ -2,8 +2,8 @@ use std::sync::Arc;
 use std::iter::once;
 use std::collections::HashMap;
 use rand::{distributions::DistString, Rng};
-use rand_xoshiro::{self, SplitMix64};
 use rand_core::SeedableRng;
+use rand_xoshiro::{self, SplitMix64};
 use rand_distr::{Alphanumeric, Distribution, Standard, WeightedIndex, Zipf, Uniform};
 use sharded_slab::Pool;
 
