@@ -4,7 +4,7 @@ export SINGLE_SERVER=0
 
 export BACKEND=rust
 export VERBOSE=true
-export UPDATE_MAX_FDS=1
+export UPDATE_MAX_FDS=0
 
 export NUM_CLIENTS=45
 export CLIENT_GEN=50
