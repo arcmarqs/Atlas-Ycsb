@@ -504,7 +504,7 @@ fn run_client(client: SMRClient, generator: Arc<Generator>, n_clients: usize) {
             sem.acquire();
 
             let sem_clone = sem.clone();
-
+            println!("sending req");
             concurrent_client
                 .update_callback::<Ordered>(
                     Arc::from(req),
