@@ -39,6 +39,8 @@ fn unordered_execution(&self, state: &StateOrchestrator, request: Request<Self, 
         state: &mut StateOrchestrator,
         request: Request<Self, StateOrchestrator>,
     ) -> Reply<Self, StateOrchestrator> {
+
+        println!("received req");
         let reply_inner = match request.as_ref() {
             serialize::Action::Read(key) => {
                 match state.get(key) {
