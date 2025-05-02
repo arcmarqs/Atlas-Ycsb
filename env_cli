@@ -6,7 +6,7 @@ export BACKEND=rust
 export VERBOSE=true
 export UPDATE_MAX_FDS=0
 
-export NUM_CLIENTS=30
+export NUM_CLIENTS=35
 export CLIENT_GEN=50
 export NUM_REPLICAS=10
 export BATCH_SIZE=75
@@ -29,7 +29,7 @@ export BATCH_TIMEOUT_MICROS=7500
 export BATCH_SLEEP_MICROS=3250
 
 export OPS_NUMBER=5000000000
-export CONCURRENT_RQS=15
+export CONCURRENT_RQS=13
 export MEASUREMENT_INTERVAL=2000
 
 export STATE_SIZE=56
@@ -45,7 +45,7 @@ export PATH_TO_OS_STATS="/home/${USER}/febft_results/os_stats_bin"~
 
 export DB_PATH="http://192.168.70.175:8886"
 export INFLUX_EXTRA_TEST="8PDIV0"
-export NUM_KEYS=7812500
+export NUM_KEYS=8000000
 export READ_OPS=20
 export INSERT_OPS=0
 export REMOVE_OPS=0
