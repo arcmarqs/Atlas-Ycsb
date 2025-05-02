@@ -11,7 +11,7 @@ use crate::common::{get_insert_ops, get_num_keys, get_read_ops, get_remove_ops, 
 
 pub const PRIMARY_KEY_LEN: usize = 32;
 const SECONDARY_KEY_LEN: usize = 16;
-const VALUE_LEN: usize = 64;
+const VALUE_LEN: usize = 128;
 const HASHMAP_LEN: usize = 10;
 
 // for more "randomness" in the distribution this should be between  ]0.0,0.24[
