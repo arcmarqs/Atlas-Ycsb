@@ -50,3 +50,4 @@ export READ_OPS=20
 export INSERT_OPS=0
 export REMOVE_OPS=0
 export UPDATE_OPS=1
+export PREFIX_LEN=0
