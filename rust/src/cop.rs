@@ -542,7 +542,7 @@ fn run_client(client: SMRClient, generator: Arc<Generator>, n_clients: usize) {
         }
     }
 
-    for _ in 0..9000000000 as usize {
+   loop {
         let key = generator.get_key_zipf(&mut rand);
         let ser_key = key.as_bytes().to_vec();
         let op: Operation = rand.sample(Standard);
