@@ -64,6 +64,7 @@ macro_rules! addr {
     }};
 }
 
+
 /*
 pub struct ObserverCall;
 
@@ -273,8 +274,7 @@ async fn node_config(n: usize, id: NodeId, comm_stats: Option<Arc<CommStats>>) -
         batch_sleep_micros: batch_sleep as u64,
     };
 
-    let node_config = NodeConfig {
-        id,
+     let node_config = NodeConfig {
         tcp_config: tcp,
         client_pool_config: cp,
     };
@@ -400,15 +400,14 @@ pub async fn setup_client(
     let node = node_config(n, id, comm_stats).await;
 
     let conf = client::ClientConfig {
-        n,
-        f: 1,
         unordered_rq_mode: UnorderedClientMode::BFT,
         node,
         reconfiguration: reconf,
     };
 
-    Client::<ReconfProtocol, KvData, ClientNetworking>::bootstrap::<OrderProtocol>(conf).await
+    Client::<ReconfProtocol, KvData, ClientNetworking>::bootstrap::<OrderProtocol>(id,conf).await
 }
+
 
 pub async fn setup_replica(
     n: usize,
@@ -479,11 +478,7 @@ pub async fn setup_replica(
         Logging,
     > {
         node,
-        view: SeqNo::ZERO,
         next_consensus_seq: SeqNo::ZERO,
-        id,
-        n,
-        f: 1,
         op_config,
         lt_config,
         db_path,

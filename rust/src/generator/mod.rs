@@ -5,6 +5,8 @@ use rand_xoshiro::{self, SplitMix64};
 use rand_core::SeedableRng;
 use rand_distr::{Alphanumeric, Distribution, Standard, WeightedIndex, Zipf, Uniform};
 use sharded_slab::Pool;
+
+use crate::common::{get_insert_ops, get_read_ops, get_remove_ops, get_update_ops};
 const PRIMARY_KEY_LEN: usize = 8;
 const SECONDARY_KEY_LEN: usize = 6;
 const VALUE_LEN: usize = 6;
@@ -106,6 +108,10 @@ pub enum Operation {
 
 impl Distribution<Operation> for Standard {
     fn sample<R: Rng + ?Sized>(&self, rng: &mut R) -> Operation {
+        let READ_OPS = get_read_ops();
+        let INSERT_OPS = get_insert_ops();
+        let REMOVE_OPS = get_remove_ops();
+        let UPDATE_OPS = get_update_ops();
         let w = WeightedIndex::new([READ_OPS, INSERT_OPS, REMOVE_OPS, UPDATE_OPS]).expect("error creating weighted distribution");
 
         match w.sample(rng) {
@@ -116,7 +122,9 @@ impl Distribution<Operation> for Standard {
             _ => panic!("INVALID OPERATION"),
         }
     }
+
 }
+
 
 /* 
 pub fn generate_keys(num_keys: usize, path: &str) -> Result<(),std::io::Error> {

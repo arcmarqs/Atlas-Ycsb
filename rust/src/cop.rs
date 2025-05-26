@@ -30,8 +30,10 @@ use atlas_common::crypto::signature::{KeyPair, PublicKey};
 use atlas_common::node_id::NodeId;
 use atlas_common::peer_addr::PeerAddr;
 use atlas_metrics::{MetricLevel, with_metric_level, with_metrics};
+use rand_distr::Standard;
 
-use crate::common::*;
+use crate::{common::*, generator};
+use crate::generator::{generate_kv_pairs, Operation};
 use crate::serialize::Action;
 
 #[derive(Debug)]
