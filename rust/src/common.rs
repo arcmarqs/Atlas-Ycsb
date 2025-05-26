@@ -190,11 +190,11 @@ fn parse_entry(re: &Regex, line: &str) -> Option<ConfigEntry> {
 
 /// Get the configuration for influx DB
 pub fn influx_db_config(id: NodeId) -> InfluxDBArgs {
-    // let ip = std::env::var("INFLUX_IP").expect("INFLUX_IP not set");
-    // let db_name = std::env::var("INFLUX_DB_NAME").expect("INFLUX_DB_NAME not set");
+    let ip = std::env::var("DB_PATH").expect("DB_PATH not set");
+   // let db_name = std::env::var("DB_NAME").expect("INFLUX_DB_NAME not set");
     // let user = std::env::var("INFLUX_USER").expect("INFLUX_USER not set");
     // let password = std::env::var("INFLUX_PASSWORD").expect("INFLUX_PASSWORD not set");
-    let ip = "http://localhost:8086".into();
+    //  let ip = "http://192.168.70.227:8886".into();
     let db_name = "atlas".into();
     let user = "admin".into();
     let password = "tese2023".into();
@@ -213,7 +213,8 @@ pub fn influx_db_config(id: NodeId) -> InfluxDBArgs {
     }
 }
 
-const BOOSTRAP_NODES: [u32; 4] = [0, 1, 2, 3];
+const BOOSTRAP_NODES: [u32; 7] = [0, 1, 2, 3, 4, 5, 6];
+
 
 async fn node_config(n: usize, id: NodeId, comm_stats: Option<Arc<CommStats>>) -> MioConfig {
     let first_cli = NodeId::from(1000u32);
@@ -597,6 +598,46 @@ pub fn get_concurrent_rqs() -> usize {
 pub fn get_watermark() -> u32 {
     let res = parse_u32(
         &*std::env::var("WATERMARK").expect("Failed to find required env var CONCURRENT_RQS"),
+    );
+
+    unwrap_ctx!(res)
+}
+
+pub fn get_num_keys() -> usize {
+    let res = parse_usize(
+        &*std::env::var("NUM_KEYS").expect("Failed to find required env var NUM_KEYS"),
+    );
+
+    unwrap_ctx!(res)
+}
+
+pub fn get_read_ops() -> u32 {
+    let res = parse_u32(
+        &*std::env::var("READ_OPS").expect("Failed to find required env var READ__OPS"),
+    );
+
+    unwrap_ctx!(res)
+}
+
+pub fn get_remove_ops() -> u32 {
+    let res = parse_u32(
+        &*std::env::var("REMOVE_OPS").expect("Failed to find required env var REMOVE_OPS"),
+    );
+
+    unwrap_ctx!(res)
+}
+
+pub fn get_insert_ops() -> u32 {
+    let res = parse_u32(
+        &*std::env::var("INSERT_OPS").expect("Failed to find required env var INSERT_OPS"),
+    );
+
+    unwrap_ctx!(res)
+}
+
+pub fn get_update_ops() -> u32 {
+    let res = parse_u32(
+        &*std::env::var("UPDATE_OPS").expect("Failed to find required env var UPDATE_OPS"),
     );
 
     unwrap_ctx!(res)

@@ -11,14 +11,7 @@ const VALUE_LEN: usize = 6;
 const HASHMAP_LEN: usize = 1;
 
 // for more "randomness" in the distribution this should be between  ]0.0,0.24[
-const ZIPF_CONSTANT: f64 = 0.0324;
-
-
-const INSERT_OPS: u32 = 2;
-const READ_OPS: u32 = 1;
-const REMOVE_OPS: u32 = 1;
-const UPDATE_OPS: u32 = 1;
-
+const ZIPF_CONSTANT: f64 = 0.0;
 #[derive(Debug)]
 pub struct Generator {
     pool: Pool<String>,
