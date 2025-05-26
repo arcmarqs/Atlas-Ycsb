@@ -63,6 +63,10 @@ impl Trigger for InitTrigger {
             .compare_exchange(false, true, Relaxed, Relaxed)
             .is_ok())
     }
+    
+    fn is_pre_process(&self) -> bool {
+        false
+    }
 }
 
 fn format_old_log(id: u32, str: &str) -> String {
@@ -547,7 +551,7 @@ fn run_client(client: SMRClient, generator: Arc<Generator>, n_clients: usize) {
         }
     }
 
-    for i in 0..9000000 {
+    loop  {
         let keys = generator.get_range(&mut rand);
 
         for key in keys {
