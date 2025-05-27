@@ -44,6 +44,14 @@ impl Generator {
     pub fn get_rand_key<R: Rng + ?Sized>(&self, rng: &mut R) -> String {
         self.pool.get(Uniform::new(0, self.size).sample(rng) as usize).unwrap().clone()
     }
+
+    pub fn get(&self,idx: usize) -> Option<String> {
+        if let Some(res) = self.pool.get(idx) {
+            Some(res.clone())
+        } else {
+            None
+        }
+    }
 }
 
 

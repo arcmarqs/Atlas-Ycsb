@@ -21,7 +21,7 @@ use log4rs::config::{Appender, Logger, Root};
 use log4rs::encode::pattern::PatternEncoder;
 use log4rs::filter::threshold::ThresholdFilter;
 use log::LevelFilter;
-use rand::Rng;
+use rand::{Rng, SeedableRng};
 
 use atlas_client::client::ordered_client::Ordered;
 use atlas_client::concurrent_client::ConcurrentClient;
@@ -31,9 +31,11 @@ use atlas_common::node_id::NodeId;
 use atlas_common::peer_addr::PeerAddr;
 use atlas_metrics::{MetricLevel, with_metric_level, with_metrics};
 use rand_distr::Standard;
+use rand_xoshiro::SplitMix64;
+use semaphores::RawSemaphore;
 
 use crate::{common::*, generator};
-use crate::generator::{generate_kv_pairs, Operation};
+use crate::generator::{generate_kv_pairs, Generator, Operation};
 use crate::serialize::Action;
 
 #[derive(Debug)]
@@ -217,33 +219,32 @@ fn main_(id: NodeId) {
 
     println!("Starting replica {:?}", id);
 
-    let addrs = {
-        let mut addrs = IntMap::new();
+       let addrs = {
+            let mut addrs = IntMap::new();
+            for replica in &replicas_config {
+                let id = NodeId::from(replica.id);
+                let addr = format!("{}:{}", replica.ipaddr, replica.portno);
+                let replica_addr = format!("{}:{}", replica.ipaddr, replica.rep_portno.unwrap());
 
-        for other in &replicas_config {
-            let id = NodeId::from(other.id);
-            let addr = format!("{}:{}", other.ipaddr, other.portno);
-            let replica_addr = format!("{}:{}", other.ipaddr, other.rep_portno.unwrap());
+                let (socket, host) = crate::addr!(&replica.hostname => addr);
 
-            let otherrep_addr = PeerAddr::new_replica(
-                crate::addr!(&other.hostname => addr),
-                crate::addr!(&other.hostname => replica_addr),
-            );
+                let replica_p_addr = PeerAddr::new(socket, host);
 
-            addrs.insert(id.into(), otherrep_addr);
-        }
+                addrs.insert(id.into(), replica_p_addr);
+            }
 
-        for client in &clients_config {
-            let id = NodeId::from(client.id);
-            let addr = format!("{}:{}", client.ipaddr, client.portno);
+            for other in &clients_config {
+                let id = NodeId::from(other.id);
+                let addr = format!("{}:{}", other.ipaddr, other.portno);
 
-            let replica = PeerAddr::new(crate::addr!(&client.hostname => addr));
+                let (socket, host) = crate::addr!(&other.hostname => addr);
+                let client_addr = PeerAddr::new(socket, host);
 
-            addrs.insert(id.into(), replica);
-        }
+                addrs.insert(id.into(), client_addr);
+            }
 
-        addrs
-    };
+            addrs
+        };
 
     let sk = secret_keys.remove(id.into()).unwrap();
 
@@ -311,8 +312,9 @@ fn client_async_main() {
                 let addr = format!("{}:{}", replica.ipaddr, replica.portno);
                 let replica_addr = format!("{}:{}", replica.ipaddr, replica.rep_portno.unwrap());
 
-                let replica_p_addr = PeerAddr::new_replica(crate::addr!(&replica.hostname => addr),
-                                                           crate::addr!(&replica.hostname => replica_addr));
+                let (socket, host) = crate::addr!(&replica.hostname => addr);
+
+                let replica_p_addr = PeerAddr::new(socket, host);
 
                 addrs.insert(id.into(), replica_p_addr);
             }
@@ -321,13 +323,15 @@ fn client_async_main() {
                 let id = NodeId::from(other.id);
                 let addr = format!("{}:{}", other.ipaddr, other.portno);
 
-                let client_addr = PeerAddr::new(crate::addr!(&other.hostname => addr));
+                let (socket, host) = crate::addr!(&other.hostname => addr);
+                let client_addr = PeerAddr::new(socket, host);
 
                 addrs.insert(id.into(), client_addr);
             }
 
             addrs
         };
+
 
         let sk = secret_keys.remove(id.into()).unwrap();
         let fut = setup_client(
@@ -391,83 +395,120 @@ fn sk_stream() -> impl Iterator<Item=KeyPair> {
     })
 }
 
-fn run_client(client: SMRClient) {
-    let id = client.id();
-    println!("run client");
-    let concurrent_client = ConcurrentClient::from_client(client, get_concurrent_rqs()).unwrap();
-    let mut rand = rand::thread_rng();
+fn run_client(client: SMRClient, generator: Arc<Generator>, n_clients: usize) {
+    let id = client.id().0.clone();
+    let concurrent_requests = get_concurrent_rqs();
+    let concurrent_client = ConcurrentClient::from_client(client, concurrent_requests).unwrap();
+    let sem = Arc::new(RawSemaphore::new(concurrent_requests));
 
-    for u  in 0..40000000 as u32 {
-
-        let i : u128 = rand.gen_range(1..1000000000);
-
-        let kv ={
-             let id = id.0.to_be_bytes().to_vec();
-             let rest = u.to_be_bytes().to_vec();
-
-             [id,rest].concat()
-        };
-    
-        let request = Action::Insert(kv, i.to_be_bytes().to_vec());
-
-        println!("{:?} // Sending req {:?}...", id, request);
-
-        if let Ok(reply) = rt::block_on(concurrent_client.update::<Ordered>(Arc::from(request))) {
-            println!("state: {:?}", reply);
-        }
-    }
-
-    loop  {
-        let keys = generator.get_range(&mut rand);
-
-        for key in keys {
-            let op: Operation = rand.sample(Standard);
-            let request = match &op {
-                Operation::Read => {
-                    println!("Read {:?}", &key);
-                    Action::Read(key)
-                }
-                Operation::Insert => {
-                    let map = generate_kv_pairs(&mut rand);
-                    // println!("Insert {:?} {:?}", &key,&map);
-                    let ser_map = bincode::serialize(&map).expect("failed to serialize map");
-                    Action::Insert(key, ser_map)
-                }
-                Operation::Remove => {
-                    //println!("Remove {:?}",&ser_key);
-
-                    Action::Remove(key)
-                }
-                Operation::Update => {
-                    let map = generate_kv_pairs(&mut rand);
-                    println!("Update {:?}", &key);
-
-                    let ser_map = bincode::serialize(&map).expect("failed to serialize map");
-                    Action::Insert(key, ser_map)
-                }
-            };
-
+    let mut rand = SplitMix64::seed_from_u64((6453 + (id * 1242)).into());
+    let rounds = get_num_keys() / n_clients;
+    let rem = get_num_keys() % n_clients;
+    //loading phase first
+    println!(
+        "client {:?} loading {:?} rounds with {:?} remainder",
+        id, rounds, rem
+    );
+    for i in 0..rounds {
+        if let Some(key) = generator.get(i * n_clients + id as usize) {
+            let map = generate_kv_pairs(&mut rand);
+            let ser_map = bincode::serialize(&map).expect("failed to serialize map");
+            let req = Action::Insert(key.as_bytes().to_vec(), ser_map);
             sem.acquire();
 
             let sem_clone = sem.clone();
-
             concurrent_client
                 .update_callback::<Ordered>(
-                    Arc::from(request),
+                    Arc::from(req),
                     Box::new(move |_rep| {
                         sem_clone.release();
                     }),
                 )
                 .expect("error");
-            /*let _ = match rt::block_on(concurrent_client.update::<Ordered>(Arc::from(request)).expect("error").as_ref() {
-                crate::serialize::Reply::None => None,
-                crate::serialize::Reply::Single(bytes) =>{
-                let map: HashMap<String,String> = bincode::deserialize(&bytes).expect("failed to deserialize reply");
-                Some(map)
-                },
-            };*/
-
-            //println!("Reply: {:?}", &res);
+        } else {
+            println!("No key with idx {:?}", i * n_clients + id as usize);
         }
     }
+
+    if id == 1 {
+        for i in 0..rem {
+            if let Some(key) = generator.get(rounds * n_clients + i as usize) {
+                let map = generate_kv_pairs(&mut rand);
+
+                let ser_map = bincode::serialize(&map).expect("failed to serialize map");
+                let req = Action::Insert(key.as_bytes().to_vec(), ser_map);
+                sem.acquire();
+
+                let sem_clone = sem.clone();
+
+                concurrent_client
+                    .update_callback::<Ordered>(
+                        Arc::from(req),
+                        Box::new(move |_rep| {
+                            sem_clone.release();
+                        }),
+                    )
+                    .expect("error");
+            } else {
+                println!("No key with idx {:?}", rounds * n_clients + i as usize);
+            }
+        }
+    }
+
+   loop {
+        let key = generator.get_key_zipf(&mut rand);
+        let ser_key = key.as_bytes().to_vec();
+        let op: Operation = rand.sample(Standard);
+        let request = match &op {
+            Operation::Read => {
+                println!("Read {:?}",&key);
+                Action::Read(ser_key)
+            },
+            Operation::Insert =>{
+                let map = generate_kv_pairs(&mut rand);
+               // println!("Insert {:?} {:?}", &key,&map);
+                let ser_map = bincode::serialize(&map).expect("failed to serialize map");
+                Action::Insert(ser_key,ser_map)
+            },
+            Operation::Remove =>{
+                //println!("Remove {:?}",&ser_key);
+
+                Action::Remove(ser_key)
+
+            },
+            Operation::Update => {
+
+                let map = generate_kv_pairs(&mut rand);
+                println!("Update {:?}",&key);
+
+                let ser_map = bincode::serialize(&map).expect("failed to serialize map");
+                Action::Insert(ser_key,ser_map)
+            },
+        };
+
+        sem.acquire();
+
+        let sem_clone = sem.clone();
+
+        concurrent_client
+            .update_callback::<Ordered>(
+                Arc::from(request),
+                Box::new(move |_rep| {
+
+                    sem_clone.release();
+                }),
+            )
+            .expect("error");
+        /*let _ = match rt::block_on(concurrent_client.update::<Ordered>(Arc::from(request)).expect("error").as_ref() {
+            crate::serialize::Reply::None => None,
+            crate::serialize::Reply::Single(bytes) =>{
+            let map: HashMap<String,String> = bincode::deserialize(&bytes).expect("failed to deserialize reply");
+            Some(map)
+            },
+        };*/
+
+        //println!("Reply: {:?}", &res);
+    }
+
+    println!("completed all ops");
 }
