@@ -214,7 +214,7 @@ pub fn influx_db_config(id: NodeId) -> InfluxDBArgs {
     }
 }
 
-const BOOSTRAP_NODES: [u32; 7] = [0, 1, 2, 3];
+const BOOSTRAP_NODES: [u32; 4] = [0, 1, 2, 3];
 
 async fn node_config(n: usize, id: NodeId, comm_stats: Option<Arc<CommStats>>) -> MioConfig {
     let first_cli = NodeId::from(1000u32);
