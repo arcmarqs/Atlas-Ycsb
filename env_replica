@@ -8,13 +8,13 @@ export UPDATE_MAX_FDS=0
 
 export NUM_CLIENTS=35
 export CLIENT_GEN=50
-export NUM_REPLICAS=7
+export NUM_REPLICAS=4
 export BATCH_SIZE=75
 export MAX_BATCH_SIZE=500
 export CLIENTS_PER_POOL=100
 
 #Global batch size from all joined client pools
-export GLOBAL_BATCH_SIZE=1000
+export GLOBAL_BATCH_SIZE=100
 export GLOBAL_BATCH_SLEEP_MICROS=3250
 
 export THREADPOOL_THREADS=36
@@ -29,7 +29,7 @@ export BATCH_TIMEOUT_MICROS=7500
 export BATCH_SLEEP_MICROS=3250
 
 export OPS_NUMBER=5000000000
-export CONCURRENT_RQS=15
+export CONCURRENT_RQS=5
 export MEASUREMENT_INTERVAL=2000
 
 export STATE_SIZE=56
@@ -44,8 +44,8 @@ export RUST_LOG=INFO
 export PATH_TO_OS_STATS="/home/${USER}/febft_results/os_stats_bin"~
 
 export DB_PATH="http://192.168.70.175:8886"
-export INFLUX_EXTRA_TEST="8PDIV0"
-export NUM_KEYS=8192000
+export INFLUX_EXTRA_TEST="4PDIV0"
+export NUM_KEYS=256000
 export READ_OPS=20
 export INSERT_OPS=0
 export REMOVE_OPS=0
