@@ -49,8 +49,8 @@ exec_stp() {
 
     # Create cgroup if it doesn't exist
     if [ ! -d "$CGROUP_DIR" ]; then
-        sudo mkdir -p "$CGROUP_DIR"
-        sudo chown -R $USER:$USER "$CGROUP_DIR"
+        mkdir -p "$CGROUP_DIR"
+        chown -R $USER:$USER "$CGROUP_DIR"
     fi
 
     # Apply memory limit
