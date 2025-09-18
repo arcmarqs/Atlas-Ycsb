@@ -45,7 +45,7 @@ export PATH_TO_OS_STATS="/home/${USER}/febft_results/os_stats_bin"~
 
 export DB_PATH="http://192.168.70.175:8886"
 export INFLUX_EXTRA_TEST="8PDIV0"
-export NUM_KEYS=1
+export NUM_KEYS=4096000
 export READ_OPS=20
 export INSERT_OPS=0
 export REMOVE_OPS=0
