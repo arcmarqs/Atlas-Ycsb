@@ -220,7 +220,7 @@ async fn node_config(n: usize, id: NodeId, comm_stats: Option<Arc<CommStats>>) -
     let first_cli = NodeId::from(1000u32);
 
     let mio_worker_count = std::env::var("MIO_WORKER_COUNT")
-        .unwrap_or("1".to_string())
+        .unwrap_or("4".to_string())
         .parse::<usize>()
         .unwrap();
 
