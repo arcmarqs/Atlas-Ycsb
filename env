@@ -3,10 +3,10 @@ export LOCAL=0
 export SINGLE_SERVER=0
 
 export BACKEND=rust
-export VERBOSE=true
+export VERBOSE=false
 export UPDATE_MAX_FDS=0
 
-export NUM_CLIENTS=5
+export NUM_CLIENTS=10
 export CLIENT_GEN=50
 export NUM_REPLICAS=4
 export BATCH_SIZE=75
