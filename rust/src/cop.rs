@@ -532,6 +532,7 @@ fn run_client(client: SMRClient, generator: Arc<Generator>, n_clients: usize) {
                     .update_callback::<Ordered>(
                         Arc::from(req),
                         Box::new(move |_rep| {
+                            println!("received reply");
                             sem_clone.release();
                         }),
                     )
