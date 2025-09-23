@@ -1,3 +1,5 @@
+use std::process::exit;
+
 mod generator;
 mod local;
 mod common;
@@ -20,14 +22,22 @@ mod os_statistics;
 static ALLOC: dhat::Alloc = dhat::Alloc;
 
 fn main() {
-
-    let _profiler = dhat::Profiler::new_heap();
-
     let is_local = std::env::var("LOCAL")
         .map(|x| x == "1")
         .unwrap_or(false);
 
     println!("Starting local? {}", is_local);
+    
+    let is_client: bool = std::env::var("CLIENT").map(|x| x == "1").unwrap_or(false);
+
+       if is_client {
+            let _profiler: dhat::Profiler = dhat::Profiler::new_heap();
+         
+            ctrlc::set_handler( || {
+                panic!("exiting");
+            })
+        .expect("Error setting Ctrl-C handler");
+       }
 
     if is_local {
         local::main()
