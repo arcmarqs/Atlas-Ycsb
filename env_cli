@@ -9,8 +9,8 @@ export UPDATE_MAX_FDS=0
 export NUM_CLIENTS=10
 export CLIENT_GEN=50
 export NUM_REPLICAS=4
-export BATCH_SIZE=20
-export MAX_BATCH_SIZE=500
+export BATCH_SIZE=10
+export MAX_BATCH_SIZE=30
 export CLIENTS_PER_POOL=20
 
 #Global batch size from all joined client pools
