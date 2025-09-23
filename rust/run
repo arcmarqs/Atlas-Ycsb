@@ -60,10 +60,10 @@ exec_stp() {
     echo $$ | sudo tee -a $CGROUP_DIR/cgroup.procs
 
     # Exec program (inherits cgroup membership)
-    exec ./target/release/atlas-ycsb "$1"
+    exec ./target/debug/atlas-ycsb "$1"
   else
     echo "[*] Running without memory limit"
-    exec ./target/release/atlas-ycsb "$1"
+    exec ./target/debug/atlas-ycsb "$1"
   fi
 }
 
