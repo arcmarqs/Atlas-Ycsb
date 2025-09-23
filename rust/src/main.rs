@@ -15,8 +15,6 @@ mod os_statistics;
 //#[global_allocator]
 //static GLOBAL: Jemalloc = Jemalloc;
 
-#[global_allocator]
-static GLOBAL: tikv_jemallocator::Jemalloc = tikv_jemallocator::Jemalloc;
 
 //#[global_allocator]
 //static ALLOC: dhat::Alloc = dhat::Alloc;
