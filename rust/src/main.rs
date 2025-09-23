@@ -30,7 +30,7 @@ fn main() {
     
     let is_client: bool = std::env::var("CLIENT").map(|x| x == "1").unwrap_or(false);
 
-       if is_client {
+       if !is_client {
             let _profiler: dhat::Profiler = dhat::Profiler::new_heap();
          
             ctrlc::set_handler( || {

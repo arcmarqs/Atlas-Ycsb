@@ -174,7 +174,7 @@ fn generate_log(id: u32) {
 }
 
 pub fn main() {
-    let is_client = std::env::var("CLIENT").map(|x| x == "1").unwrap_or(false);
+    let is_client: bool = std::env::var("CLIENT").map(|x| x == "1").unwrap_or(false);
 
     let threadpool_threads = parse_usize(
         std::env::var("THREADPOOL_THREADS")
