@@ -4,6 +4,7 @@ mod common;
 mod exec;
 mod cop;
 mod serialize;
+mod os_statistics;
 
 //#[cfg(not(target_env = "msvc"))]
 //use tikv_jemallocator::Jemalloc;
@@ -12,10 +13,16 @@ mod serialize;
 //#[global_allocator]
 //static GLOBAL: Jemalloc = Jemalloc;
 
+//#[global_allocator]
+//static GLOBAL: tikv_jemallocator::Jemalloc = tikv_jemallocator::Jemalloc;
+
 #[global_allocator]
-static GLOBAL: tikv_jemallocator::Jemalloc = tikv_jemallocator::Jemalloc;
+static ALLOC: dhat::Alloc = dhat::Alloc;
 
 fn main() {
+
+    let _profiler = dhat::Profiler::new_heap();
+
     let is_local = std::env::var("LOCAL")
         .map(|x| x == "1")
         .unwrap_or(false);

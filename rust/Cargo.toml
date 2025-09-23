@@ -41,7 +41,7 @@ mprober-lib = "0.1.7"
 procinfo = "0.4.2"
 blake3 = "*"
 tikv-jemallocator = "*"
-
+dhat = "*"
 atlas-common = { path = "../../Atlas/Atlas-Common", features=["persistent_db_rocksdb"]}
 atlas-communication = { path = "../../Atlas/Atlas-Communication" }
 atlas-smr-application = { path = "../../Atlas/Atlas-SMR-Application" }
@@ -91,3 +91,6 @@ lto = true
 debug = false
 debug-assertions = false
 incremental = false
+
+[features]
+dhat-heap = []    # if you are doing heap profiling
