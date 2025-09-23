@@ -15,20 +15,13 @@ mod os_statistics;
 //#[global_allocator]
 //static GLOBAL: Jemalloc = Jemalloc;
 
-//#[global_allocator]
-//static GLOBAL: tikv_jemallocator::Jemalloc = tikv_jemallocator::Jemalloc;
-
 #[global_allocator]
-static ALLOC: dhat::Alloc = dhat::Alloc;
+static GLOBAL: tikv_jemallocator::Jemalloc = tikv_jemallocator::Jemalloc;
+
+//#[global_allocator]
+//static ALLOC: dhat::Alloc = dhat::Alloc;
 
 fn main() {
-    let _profiler: dhat::Profiler = dhat::Profiler::new_heap();
-
-    ctrlc::set_handler( || {
-        panic!("exiting");
-    })
-    .expect("Error setting Ctrl-C handler");
-
     let is_local = std::env::var("LOCAL")
         .map(|x| x == "1")
         .unwrap_or(false);
