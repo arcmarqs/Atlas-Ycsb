@@ -40,6 +40,7 @@ bincode = "1.0.0"
 mprober-lib = "0.1.7"
 procinfo = "0.4.2"
 blake3 = "*"
+tikv-jemallocator = "*"
 
 atlas-common = { path = "../../Atlas/Atlas-Common", features=["persistent_db_rocksdb"]}
 atlas-communication = { path = "../../Atlas/Atlas-Communication" }

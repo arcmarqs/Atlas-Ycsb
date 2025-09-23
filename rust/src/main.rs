@@ -12,6 +12,9 @@ mod serialize;
 //#[global_allocator]
 //static GLOBAL: Jemalloc = Jemalloc;
 
+#[global_allocator]
+static GLOBAL: tikv_jemallocator::Jemalloc = tikv_jemallocator::Jemalloc;
+
 fn main() {
     let is_local = std::env::var("LOCAL")
         .map(|x| x == "1")
