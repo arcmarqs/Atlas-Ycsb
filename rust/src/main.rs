@@ -9,7 +9,7 @@ mod serialize;
 mod os_statistics;
 
 //#[cfg(not(target_env = "msvc"))]
-//use tikv_jemallocator::Jemalloc;
+use tikv_jemallocator::Jemalloc;
 
 //#[cfg(not(target_env = "msvc"))]
 //#[global_allocator]
@@ -17,7 +17,7 @@ mod os_statistics;
 
 
 #[global_allocator]
-static GLOBAL: Jemalloc = tikv_jemallocator::Jemalloc;
+static GLOBAL: Jemalloc = Jemalloc;
 
 fn main() {
     let is_local = std::env::var("LOCAL")
