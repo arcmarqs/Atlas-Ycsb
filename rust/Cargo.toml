@@ -41,8 +41,7 @@ mprober-lib = "0.1.7"
 procinfo = "0.4.2"
 blake3 = "*"
 tikv-jemallocator = "*"
-dhat = "*"
-ctrlc = "3.5.0"
+tikv-jemalloc-ctl = "0.6.0"
 atlas-common = { path = "../../Atlas/Atlas-Common", features=["persistent_db_rocksdb"]}
 atlas-communication = { path = "../../Atlas/Atlas-Communication" }
 atlas-smr-application = { path = "../../Atlas/Atlas-SMR-Application" }
