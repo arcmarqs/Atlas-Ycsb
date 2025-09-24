@@ -16,8 +16,8 @@ mod os_statistics;
 //static GLOBAL: Jemalloc = Jemalloc;
 
 
-//#[global_allocator]
-//static ALLOC: dhat::Alloc = dhat::Alloc;
+#[global_allocator]
+static GLOBAL: Jemalloc = tikv_jemallocator::Jemalloc;
 
 fn main() {
     let is_local = std::env::var("LOCAL")
