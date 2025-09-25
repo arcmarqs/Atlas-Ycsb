@@ -51,15 +51,13 @@ fn unordered_execution(&self, state: &StateOrchestrator, request: Request<Self, 
 
             }
             serialize::Action::Insert(key, value) => {
-                serialize::Reply::Single(value.to_owned())
-
-              /*   match state.insert(key, value.to_owned()) {
+                match state.insert(key, value.to_owned()) {
                     Some(vec) => {
 
                         serialize::Reply::Single(vec.to_vec())
                     },
                     None => serialize::Reply::None,
-                } */
+                }
             }
             serialize::Action::Remove(key) => { 
 
