@@ -121,7 +121,6 @@ impl ScalableApp<StateOrchestrator> for KVApp {
             serialize::Action::Remove(key) => { 
                 serialize::Reply::Single(state.remove(&key))
             }
-            }
         };
 
        // state.db.flush();
@@ -129,6 +128,7 @@ impl ScalableApp<StateOrchestrator> for KVApp {
         Arc::new(reply_inner)
     }
 }
+
 impl CRUDState<StateOrchestrator> for KVApp {
     fn read(&self, column: &str, key: &[u8]) -> Option<Vec<u8>> {
         match state.get(key) {
