@@ -33,7 +33,7 @@ use atlas_reconfiguration::config::ReconfigurableNetworkConfig;
 use atlas_reconfiguration::message::{NodeTriple, ReconfData};
 use atlas_reconfiguration::network_reconfig::NetworkInfo;
 use atlas_reconfiguration::ReconfigurableNodeProtocol;
-use atlas_smr_execution::MultiThreadedDivExecutor;
+use atlas_smr_execution::SingleThreadedDivExecutor;
 use atlas_smr_replica::config::{DivisibleStateReplicaConfig, ReplicaConfig};
 use atlas_smr_replica::server::divisible_state_server::DivStReplica;
 use atlas_view_transfer::config::ViewTransferConfig;
@@ -336,7 +336,7 @@ pub type StateTransferProtocol = BtStateTransfer<StateOrchestrator, ReplicaNetwo
 pub type ViewTransferProt = SimpleViewTransferProtocol<OrderProtocol, ReplicaNetworking>;
 pub type SMRReplica = DivStReplica<
     ReconfProtocol,
-    MultiThreadedDivExecutor,
+    SingleThreadedDivExecutor,
     StateOrchestrator,
     KVApp,
     OrderProtocol,
