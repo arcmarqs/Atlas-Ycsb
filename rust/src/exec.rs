@@ -7,6 +7,8 @@ use atlas_smr_application::app::{Application, Request, Reply, UnorderedBatch, Ba
 use rand_core::SeedableRng;
 use rand_xoshiro::SplitMix64;
 
+use atlas_smr_execution::scalable::CRUDState;
+use atlas_smr_execution::scalable::ScalableApp;
 
 use crate::{generator::{generate_key_pool, generate_kv_pairs, Generator, PRIMARY_KEY_LEN}, serialize::{self, KvData}};
 
@@ -110,7 +112,7 @@ fn update_batch(
 }
 
 impl ScalableApp<StateOrchestrator> for KVApp {
-    fn speculatively_execute(&self, state: &mut impl CRUDState, request: Request<Self, S>) -> Reply<Self, StateOrchestrator> {
+    fn speculatively_execute(&self, state: &mut impl CRUDState, request: Request<Self, StateOrchestrator>) -> Reply<Self, StateOrchestrator> {
         let reply_inner = match request.as_ref() {
             serialize::Action::Read(key) => {
                 serialize::Reply::Single(state.read(&key))
