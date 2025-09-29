@@ -113,15 +113,35 @@ fn update_batch(
 
 impl ScalableApp<StateOrchestrator> for KVApp {
     fn speculatively_execute(&self, state: &mut impl CRUDState, request: Request<Self, StateOrchestrator>) -> Reply<Self, StateOrchestrator> {
-        let reply_inner = match request.as_ref() {
+         let reply_inner = match request.as_ref() {
             serialize::Action::Read(key) => {
-                serialize::Reply::Single(state.read(&key))
+                match state.read("", &key) {
+                    Some(vec) => {
+
+                        serialize::Reply::Single(vec.to_vec())
+                    },
+                    None => serialize::Reply::None,
+                }
+
             }
             serialize::Action::Insert(key, value) => {
-                serialize::Reply::Single(state.update(&key, &value))
+                match state.update("", &key, &value) {
+                    Some(vec) => {
+
+                        serialize::Reply::Single(vec.to_vec())
+                    },
+                    None => serialize::Reply::None,
+                }
             }
             serialize::Action::Remove(key) => { 
-                serialize::Reply::Single(state.remove(&key))
+
+                match state.delete("",&key) {
+                    Some(vec) => {
+
+                        serialize::Reply::Single(vec.to_vec())
+                    },
+                    None => serialize::Reply::None,
+                }
             }
         };
 
