@@ -108,3 +108,65 @@ fn update_batch(
         reply_batch
     }
 }
+
+impl ScalableApp<StateOrchestrator> for KVApp {
+    fn speculatively_execute(&self, state: &mut impl CRUDState, request: Request<Self, S>) -> Reply<Self, StateOrchestrator> {
+        let reply_inner = match request.as_ref() {
+            serialize::Action::Read(key) => {
+                serialize::Reply::Single(state.read(&key))
+            }
+            serialize::Action::Insert(key, value) => {
+                serialize::Reply::Single(state.create(&key, &value))
+            }
+            serialize::Action::Remove(key) => { 
+                serialize::Reply::Single(state.remove(&key))
+            }
+            }
+        };
+
+       // state.db.flush();
+
+        Arc::new(reply_inner)
+    }
+}
+impl CRUDState<StateOrchestrator> for KVApp {
+    fn read(&self, column: &str, key: &[u8]) -> Option<Vec<u8>> {
+        match state.get(key) {
+            Some(vec) => {
+                Some(vec.to_vec())
+            },
+            None => None,
+        }
+    }
+
+    /// Create a new entry in the state
+    fn create(&mut self, column: &str, key: &[u8], value: &[u8]) -> bool {
+        match state.insert(key, value.to_owned()) {
+            Some(vec) => {
+                Some(vec.to_vec())
+            },
+            None => None,
+        }
+    }
+
+    /// Update an entry in the state
+    /// Returns the previous value that was stored in the state
+    fn update(&mut self, column: &str, key: &[u8], value: &[u8]) -> Option<Vec<u8>> {
+        match state.insert(key, value.to_owned()) {
+            Some(vec) => {
+                Some(vec.to_vec())
+            },
+            None => None,
+        }
+    }
+
+    /// Delete an entry in the state
+    fn delete(&mut self, column: &str, key: &[u8]) -> Option<Vec<u8>> {
+        match state.remove(key) {
+            Some(vec) => {
+                Some(vec.to_vec())
+            },
+            None => None,
+        }
+    }
+}
