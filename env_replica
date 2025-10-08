@@ -6,16 +6,16 @@ export BACKEND=rust
 export VERBOSE=true
 export UPDATE_MAX_FDS=0
 
-export NUM_CLIENTS=15
+export NUM_CLIENTS=10
 export CLIENT_GEN=50
 export NUM_REPLICAS=4
-export BATCH_SIZE=75
+export BATCH_SIZE=25
 export MAX_BATCH_SIZE=500
 export CLIENTS_PER_POOL=100
 
 #Global batch size from all joined client pools
-export GLOBAL_BATCH_SIZE=1000
-export GLOBAL_BATCH_SLEEP_MICROS=3250
+export GLOBAL_BATCH_SIZE=5000
+export GLOBAL_BATCH_SLEEP_MICROS=4000
 
 export THREADPOOL_THREADS=16
 export MIO_WORKER_COUNT=4
@@ -26,10 +26,10 @@ export WATERMARK=25
 #1 ms batch timeouts
 export BATCH_TIMEOUT_MICROS=7500
 #1 ms sleep between client pool collections
-export BATCH_SLEEP_MICROS=3250
+export BATCH_SLEEP_MICROS=4000
 
 export OPS_NUMBER=5000000000
-export CONCURRENT_RQS=35
+export CONCURRENT_RQS=50
 export MEASUREMENT_INTERVAL=2000
 
 export STATE_SIZE=56
