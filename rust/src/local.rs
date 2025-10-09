@@ -37,7 +37,7 @@ use rand_xoshiro::SplitMix64;
 use semaphores::RawSemaphore;
 
 use crate::common::*;
-use crate::generator::{generate_key_pool, generate_kv_pairs, Generator, Operation};
+use crate::generator::{generate_key_pool, generate_kv_pairs, generate_monotonic_keypool, Generator, Operation};
 use crate::serialize::Action;
 
 #[derive(Debug)]
@@ -553,7 +553,7 @@ fn client_async_main() {
     //crate::os_statistics::start_statistics_thread(NodeId(first_cli));
 
     let mut handles = Vec::with_capacity(client_count as usize);
-    let keypool = generate_key_pool(100000);
+    let keypool = generate_monotonic_keypool(100000);
     let generator = Arc::new(Generator::new(keypool, 100000));
 
     for client in clients {
