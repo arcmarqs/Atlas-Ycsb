@@ -96,6 +96,21 @@ pub fn generate_key_pool(num_keys: usize) -> Pool<String> {
     pool
 }
 
+pub fn generate_monotonic_keypool(num_keys: usize) -> Pool<Vec<u8>> {
+    let pool: Pool<Vec<u8>> = Pool::new();
+    let context = Context::new(42);
+    let ts = Timestamp::from_rfc4122(14976234442241191232, context.generate_sequence(0, 0));
+
+    for i in 0..num_keys {
+        let bytes = i.to_be_bytes();
+        let node: [u8;6] = bytes[2..].try_into().expect("wrong size");
+        let uuid = Uuid::new_v1(ts, &node);
+        let _ = pool.create_with(|vec| vec.extend(uuid.as_bytes().to_vec()));
+    }    
+
+    pool
+}
+
 pub fn generate_kv_pairs<R: Rng>(rand: &mut R) -> HashMap<String,String> {
     let mut map: HashMap<String,String> = HashMap::new();
 
