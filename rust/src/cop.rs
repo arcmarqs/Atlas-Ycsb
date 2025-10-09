@@ -501,7 +501,6 @@ fn run_client(client: SMRClient, generator: Arc<Generator>, n_clients: usize) {
         if let Some(key) = generator.get(i * n_clients + id as usize) {
             let map = generate_kv_pairs(&mut rand);
             let ser_map = bincode::serialize(&map).expect("failed to serialize map");
-            println!("{:?}", &key);
             let req = Action::Insert(key.into(), ser_map);
             sem.acquire();
 
@@ -526,8 +525,6 @@ fn run_client(client: SMRClient, generator: Arc<Generator>, n_clients: usize) {
                 let map = generate_kv_pairs(&mut rand);
 
                 let ser_map = bincode::serialize(&map).expect("failed to serialize map");
-                println!("{:?}", &key);
-
                 let req = Action::Insert(key.into(), ser_map);
                 sem.acquire();
 
