@@ -496,14 +496,17 @@ fn run_client(client: SMRClient, generator: Arc<Generator>, n_clients: usize) {
         "client {:?} loading {:?} rounds with {:?} remainder",
         id, rounds, rem
     );
+
     for i in 0..rounds {
         if let Some(key) = generator.get(i * n_clients + id as usize) {
             let map = generate_kv_pairs(&mut rand);
             let ser_map = bincode::serialize(&map).expect("failed to serialize map");
-            let req = Action::Insert(key.as_bytes().to_vec(), ser_map);
+            println!("{:?}", &key);
+            let req = Action::Insert(key.into(), ser_map);
             sem.acquire();
 
             let sem_clone = sem.clone();
+
             concurrent_client
                 .update_callback::<Ordered>(
                     Arc::from(req),
@@ -523,7 +526,9 @@ fn run_client(client: SMRClient, generator: Arc<Generator>, n_clients: usize) {
                 let map = generate_kv_pairs(&mut rand);
 
                 let ser_map = bincode::serialize(&map).expect("failed to serialize map");
-                let req = Action::Insert(key.as_bytes().to_vec(), ser_map);
+                println!("{:?}", &key);
+
+                let req = Action::Insert(key.into(), ser_map);
                 sem.acquire();
 
                 let sem_clone = sem.clone();
@@ -532,7 +537,6 @@ fn run_client(client: SMRClient, generator: Arc<Generator>, n_clients: usize) {
                     .update_callback::<Ordered>(
                         Arc::from(req),
                         Box::new(move |_rep| {
-                            println!("received reply");
                             sem_clone.release();
                         }),
                     )
@@ -543,13 +547,13 @@ fn run_client(client: SMRClient, generator: Arc<Generator>, n_clients: usize) {
         }
     }
 
-   loop {
+
+    for _ in 0..9000000000 as usize {
         let key = generator.get_key_zipf(&mut rand);
-        let ser_key = key.as_bytes().to_vec();
-        let op: Operation = rand.sample(Standard);
-        let request = match &op {
+
+        /*    let request = match &op {
             Operation::Read => {
-                println!("Read {:?}",&key);
+              //  println!("Read {:?}",&ser_key);
                 Action::Read(ser_key)
             },
             Operation::Insert =>{
@@ -572,16 +576,22 @@ fn run_client(client: SMRClient, generator: Arc<Generator>, n_clients: usize) {
                 let ser_map = bincode::serialize(&map).expect("failed to serialize map");
                 Action::Insert(ser_key,ser_map)
             },
-        };
+        };*/
+        let map = generate_kv_pairs(&mut rand);
 
+        let ser_map = bincode::serialize(&map).expect("failed to serialize map");
+        println!("Update {:?}", &key);
+
+        let req = Action::Insert(key.into(), ser_map);
         sem.acquire();
 
         let sem_clone = sem.clone();
 
         concurrent_client
             .update_callback::<Ordered>(
-                Arc::from(request),
+                Arc::from(req),
                 Box::new(move |_rep| {
+                    println!("Repl {:?}", &_rep);
 
                     sem_clone.release();
                 }),
@@ -600,3 +610,4 @@ fn run_client(client: SMRClient, generator: Arc<Generator>, n_clients: usize) {
 
     println!("completed all ops");
 }
+
