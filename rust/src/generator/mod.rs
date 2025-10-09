@@ -6,7 +6,7 @@ use rand_core::SeedableRng;
 use rand_xoshiro::{self, SplitMix64};
 use rand_distr::{Alphanumeric, Distribution, Standard, WeightedIndex, Zipf, Uniform};
 use sharded_slab::Pool;
-use uuid::{timestamp::context, Context, Timestamp, Uuid};
+use uuid::{timestamp::context, ClockSequence, Context, Timestamp, Uuid};
 
 use crate::common::{get_insert_ops, get_num_keys, get_read_ops, get_remove_ops, get_update_ops};
 
@@ -100,7 +100,7 @@ pub fn generate_key_pool(num_keys: usize) -> Pool<String> {
 pub fn generate_monotonic_keypool(num_keys: usize) -> Pool<Vec<u8>> {
     let pool: Pool<Vec<u8>> = Pool::new();
     let context = Context::new(42);
-    let ts = Timestamp::from_gregorian(14976234442241191232, context.generate_timestamp_sequence(0, 0));
+    let ts = Timestamp::from_gregorian(14976234442241191232, context.generate_sequence(0, 0));
 
     for i in 0..num_keys {
         let bytes = i.to_be_bytes();
