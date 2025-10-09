@@ -5,7 +5,7 @@ use rand::{distributions::DistString, Rng};
 use rand_core::SeedableRng;
 use rand_xoshiro::{self, SplitMix64};
 use rand_distr::{Alphanumeric, Distribution, Standard, WeightedIndex, Zipf, Uniform};
-use sharded_slab::Pool;
+use sharded_slab::{Clear, Pool};
 use uuid::{timestamp::context, ClockSequence, Context, Timestamp, Uuid};
 
 use crate::common::{get_insert_ops, get_num_keys, get_read_ops, get_remove_ops, get_update_ops};
@@ -19,14 +19,14 @@ const HASHMAP_LEN: usize = 10;
 const ZIPF_CONSTANT: f64 = 0.0;
 
 #[derive(Debug)]
-pub struct Generator {
-    pool: Pool<String>,
+pub struct Generator{
+    pool: Pool<Vec<u8>>,
     distribution: Zipf<f64>,
     size: u64,
 }
 
-impl Generator {
-    pub fn new(pool: Pool<String>, size: u64) -> Self {
+impl Generator{
+    pub fn new(pool: Pool<Vec<u8>>, size: u64) -> Self {
         let distribution = Zipf::new(size, ZIPF_CONSTANT).expect("fail");
         Self {
             pool,
@@ -36,7 +36,7 @@ impl Generator {
     }
 
     //get a random Zipfian distributed key, if the zipfian constant is 0, the distribution will be uniform, constants > ~.25 will start to behave more like an exponential distribution.
-    pub fn get_key_zipf<R: Rng + ?Sized>(&self, rng: &mut R) -> String {
+    pub fn get_key_zipf<R: Rng + ?Sized>(&self, rng: &mut R) -> Vec<u8> {
         // the distribution generates integers starting at 1 while the indexes of the Pool start at 0.
         let index = (self.distribution.sample(rng) - 1.0) as usize;
         let key = self.pool.get(index);
@@ -44,12 +44,25 @@ impl Generator {
         key.unwrap().clone()
     }
 
+     pub fn get_range<R: Rng + ?Sized>(&self,rng: &mut R)-> Vec<Vec<u8>> {
+        let index = (self.distribution.sample(rng) - 1.0) as usize;
+        let range = rng.gen_range(255..10000);
+        let mut set = vec![];
+        for i in 0..range {
+            let key = self.pool.get(index + i);
+            if key.is_some() {
+                set.push(key.unwrap().clone());
+            }
+        }
+        set
+    }
+
     //get a random, uniformly distributed key
-    pub fn get_rand_key<R: Rng + ?Sized>(&self, rng: &mut R) -> String {
+    pub fn get_rand_key<R: Rng + ?Sized>(&self, rng: &mut R) ->Vec<u8> {
         self.pool.get(Uniform::new(0, self.size).sample(rng) as usize).unwrap().clone()
     }
 
-    pub fn get(&self,idx: usize) -> Option<String> {
+    pub fn get(&self,idx: usize) -> Option<Vec<u8>> {
         if let Some(res) = self.pool.get(idx) {
             Some(res.clone())
         } else {
