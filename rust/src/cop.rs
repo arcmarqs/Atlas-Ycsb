@@ -517,6 +517,8 @@ fn run_client(client: SMRClient, generator: Arc<Generator>, n_clients: usize) {
         }
     }
 
+    println!("finished main loading rounds");
+
     if id == 1 {
         for i in 0..rem {
             if let Some(key) = generator.get(rounds * n_clients + i as usize) {
@@ -542,6 +544,8 @@ fn run_client(client: SMRClient, generator: Arc<Generator>, n_clients: usize) {
             }
         }
     }
+
+    println!("finished loading phase, starting ops");
 
    loop {
         let key = generator.get_key_zipf(&mut rand);
