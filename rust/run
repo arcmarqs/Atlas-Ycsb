@@ -54,10 +54,10 @@ exec_stp() {
     fi
 
     # Apply memory limit
-    echo "$MEM_LIMIT" | sudo tee -a $CGROUP_DIR/memory.max
+    echo "$MEM_LIMIT" | sudo tee $CGROUP_DIR/memory.max
 
     # Add this shell process to the cgroup
-    echo $$ | sudo tee -a $CGROUP_DIR/cgroup.procs
+    echo $$ | sudo tee $CGROUP_DIR/cgroup.procs
 
     # Exec program (inherits cgroup membership)
     exec ./target/release/atlas-ycsb "$1"
