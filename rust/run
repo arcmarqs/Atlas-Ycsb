@@ -58,12 +58,12 @@ exec_stp() {
 
     # Add this shell process to the cgroup
     echo $$ | sudo tee $CGROUP_DIR/cgroup.procs
-
+    export MALLOC_CONF="dirty_decay_ms:0,muzzy_decay_ms:0,background_thread:true"
     # Exec program (inherits cgroup membership)
-    exec MALLOC_CONF="dirty_decay_ms:0,muzzy_decay_ms:0,background_thread:true" ./target/release/atlas-ycsb "$1"
+    exec ./target/release/atlas-ycsb "$1"
   else
     echo "[*] Running without memory limit"
-    exec MALLOC_CONF="dirty_decay_ms:0,muzzy_decay_ms:0,background_thread:true" ./target/release/atlas-ycsb "$1"
+    exec ./target/release/atlas-ycsb "$1"
   fi
 }
 
