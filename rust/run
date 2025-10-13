@@ -60,10 +60,10 @@ exec_stp() {
     echo $$ | sudo tee $CGROUP_DIR/cgroup.procs
 
     # Exec program (inherits cgroup membership)
-    exec ./target/release/atlas-ycsb "$1"
+    exec MALLOC_CONF="dirty_decay_ms:0,muzzy_decay_ms:0,background_thread:true" ./target/release/atlas-ycsb "$1"
   else
     echo "[*] Running without memory limit"
-    exec ./target/release/atlas-ycsb "$1"
+    exec MALLOC_CONF="dirty_decay_ms:0,muzzy_decay_ms:0,background_thread:true" ./target/release/atlas-ycsb "$1"
   fi
 }
 
