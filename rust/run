@@ -58,7 +58,7 @@ exec_stp() {
 
     # Add this shell process to the cgroup
     echo $$ | sudo tee $CGROUP_DIR/cgroup.procs
-    export MALLOC_CONF="dirty_decay_ms:1000,muzzy_decay_ms:1000"
+    export MALLOC_CONF="dirty_decay_ms:1000,muzzy_decay_ms:1000,background_thread:true"
     # Exec program (inherits cgroup membership)
     exec ./target/release/atlas-ycsb "$1"
   else
